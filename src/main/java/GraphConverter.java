@@ -1,7 +1,4 @@
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Graph;
@@ -44,7 +41,11 @@ public class GraphConverter {
             JsonObject down = verts.get(e.getVertex(Direction.IN));
 
             JsonArray questionIds = up.getAsJsonArray("next_question");
-            questionIds.add(down.get("id"));
+            if (e.getVertex(Direction.IN).getProperty("done") != null && ((Boolean) e.getVertex(Direction.IN).getProperty("done"))) {
+                questionIds.add(JsonNull.INSTANCE);
+            } else {
+                questionIds.add(down.get("id"));
+            }
             up.add("next_question", questionIds);
 
             JsonArray optionText = up.getAsJsonArray("options");
@@ -76,7 +77,7 @@ public class GraphConverter {
         if (v.getPropertyKeys().contains("imageURL")) {
             obj.addProperty("image", v.getProperty("imageURL").toString());
         }
-        obj.add("attachment", null);
+        obj.add("attachment", JsonNull.INSTANCE);
         obj.add("options", new JsonArray());
         obj.add("next_question", new JsonArray());
         return obj;
