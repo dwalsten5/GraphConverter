@@ -18,6 +18,7 @@ public class GraphConverter {
     public static void main(String[] args) {
         try {
             graph_file = args[0];
+            System.out.println("File: " + graph_file);
         } catch (ArrayIndexOutOfBoundsException e) {
             System.out.println("Must include a GraphML file to parse");//Probably will need to catch this error at some point
             System.exit(0);
@@ -30,6 +31,7 @@ public class GraphConverter {
             reader.inputGraph(graph_file);
         } catch (IOException e) {
             System.out.println("INVALID FILE");
+            e.printStackTrace();
         }
 
         Map<Vertex, JsonObject> verts = new HashMap<Vertex, JsonObject>();
@@ -71,7 +73,13 @@ public class GraphConverter {
 
     private static JsonObject vertexToJsonObject(Vertex v) {
         JsonObject obj = new JsonObject();
-        obj.addProperty("id", (int) (Math.random() * 999999999) + "");
+        String id;
+        if (v.getProperty("start") != null && ((Boolean) v.getProperty("start"))) {
+            id = "q1";
+        } else {
+            id = (int) (Math.random() * 999999999) + "";
+        }
+        obj.addProperty("id", id);
         obj.addProperty("question", v.getProperty("question") == null ? "" : v.getProperty("question").toString());
         obj.addProperty("details", v.getProperty("details") == null ? "" : v.getProperty("details").toString());
         if (v.getPropertyKeys().contains("imageURL")) {
