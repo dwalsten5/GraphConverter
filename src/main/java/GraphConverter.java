@@ -43,16 +43,42 @@ public class GraphConverter {
             JsonObject down = verts.get(e.getVertex(Direction.IN));
 
             JsonArray questionIds = up.getAsJsonArray("next_question");
+            JsonArray toAddQuestionIds = new JsonArray();
+            JsonElement toAddQ;
             if (e.getVertex(Direction.IN).getProperty("done") != null && ((Boolean) e.getVertex(Direction.IN).getProperty("done"))) {
-                questionIds.add(JsonNull.INSTANCE);
+                toAddQ = JsonNull.INSTANCE;
             } else {
-                questionIds.add(down.get("id"));
+            	toAddQ = down.get("id");
             }
-            up.add("next_question", questionIds);
-
             JsonArray optionText = up.getAsJsonArray("options");
-            optionText.add(e.getProperty("option").toString());
-            up.add("options", optionText);
+            JsonArray toAddOptionText = new JsonArray();
+            String toAdd = e.getProperty("option");
+            int total_counter = 0;
+            if (optionText.size() == 0) {
+            	toAddOptionText.add(toAdd);
+            	toAddQuestionIds.add(toAddQ);
+            } else {
+	            while (total_counter < optionText.size()) {
+	            	String temp = optionText.get(total_counter).toString().replaceAll("[\\p{Punct}&&[^0-9]&&[^,]]", "");
+	            	if (toAdd.toString().compareToIgnoreCase(temp) > 0) {
+	            		//This means that the string to add is towards the end of the alphabet
+	            		toAddOptionText.add(toAdd);
+	            		toAddQuestionIds.add(toAddQ);
+	            	} 
+            		toAddOptionText.add(optionText.get(total_counter));
+            		toAddQuestionIds.add(questionIds.get(total_counter));
+	            	total_counter++;
+	            }
+	            if (total_counter == toAddOptionText.size()) {//This means that nothing was added
+	            	toAddOptionText.add(toAdd);
+	            	toAddQuestionIds.add(toAddQ);
+	            }
+            }
+            //
+            //In this step, we simply add the first edge seen to the options array
+            //We just need to insert the text in the proper alphabetical order
+            up.add("options", toAddOptionText);
+            up.add("next_question", toAddQuestionIds);
         }
 
         JsonArray all = new JsonArray();
