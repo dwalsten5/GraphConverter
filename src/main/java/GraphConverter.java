@@ -42,6 +42,7 @@ public class GraphConverter {
             JsonObject up = verts.get(e.getVertex(Direction.OUT));
             JsonObject down = verts.get(e.getVertex(Direction.IN));
 
+            //Getting the Next Question Ids from the JSON object for vertex
             JsonArray questionIds = up.getAsJsonArray("next_question");
             JsonArray toAddQuestionIds = new JsonArray();
             JsonElement toAddQ;
@@ -50,9 +51,12 @@ public class GraphConverter {
             } else {
             	toAddQ = down.get("id");
             }
+            
+            //Getting the past options from existing JSON file
             JsonArray optionText = up.getAsJsonArray("options");
             JsonArray toAddOptionText = new JsonArray();
             String toAdd = e.getProperty("option");
+            
             int total_counter = 0;
             if (optionText.size() == 0) {
             	toAddOptionText.add(toAdd);
@@ -88,7 +92,8 @@ public class GraphConverter {
 
         try {
             PrintWriter writer = new PrintWriter(new FileWriter(graph_file.replace(".graphml", ".json")));
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create(); //Disable the issues with reading "="
+            
             writer.print(gson.toJson(all));
             writer.flush();
             writer.close();
@@ -109,9 +114,25 @@ public class GraphConverter {
         obj.addProperty("question", v.getProperty("question") == null ? "" : v.getProperty("question").toString());
         obj.addProperty("details", v.getProperty("details") == null ? "" : v.getProperty("details").toString());
         if (v.getPropertyKeys().contains("imageURL")) {
-            obj.addProperty("image", v.getProperty("imageURL").toString());
+        	JsonArray images = new JsonArray();
+        	//Splitting by the semicolon
+        	for (String im: v.getProperty("imageURL").toString().split(";")) {
+        		images.add(im);
+        	}
+            obj.add("image", images);
+        } else {
+        	obj.add("image", JsonNull.INSTANCE);
         }
-        obj.add("attachment", JsonNull.INSTANCE);
+        if (v.getPropertyKeys().contains("resources")) { //Attachments to add
+        	JsonArray attachments = new JsonArray();
+        	//Splitting by the semicolon
+        	for (String att: v.getProperty("resources").toString().split(";")) {
+        		attachments.add(att);
+        	}
+        	obj.add("attachment",attachments);
+        } else {
+        	obj.add("attachment", JsonNull.INSTANCE);
+        }
         obj.add("options", new JsonArray());
         obj.add("next_question", new JsonArray());
         return obj;
