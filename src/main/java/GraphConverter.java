@@ -1,21 +1,39 @@
 package main.java;
 import com.google.gson.*;
+import com.google.gson.stream.JsonReader;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Graph;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.tg.TinkerGraph;
 import com.tinkerpop.blueprints.util.io.graphml.GraphMLReader;
+
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import static java.nio.file.StandardCopyOption.*;
 
 public class GraphConverter {
     static String graph_file;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException, FileNotFoundException {
+    	Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create(); //Disable the issues with reading "="
+        JsonArray all = new JsonArray(); //This will be the compiled array of JSON objects
+        
+        
         try {
             graph_file = args[0];
             System.out.println("File: " + graph_file);
@@ -41,16 +59,142 @@ public class GraphConverter {
         for (Edge e : graph.getEdges()) {
             JsonObject up = verts.get(e.getVertex(Direction.OUT));
             JsonObject down = verts.get(e.getVertex(Direction.IN));
-
+            
             //Getting the Next Question Ids from the JSON object for vertex
             JsonArray questionIds = up.getAsJsonArray("next_question");
             JsonArray toAddQuestionIds = new JsonArray();
-            JsonElement toAddQ;
-            if (e.getVertex(Direction.IN).getProperty("done") != null && ((Boolean) e.getVertex(Direction.IN).getProperty("done"))) {
-                toAddQ = JsonNull.INSTANCE;
+            JsonElement toAddQ = JsonNull.INSTANCE;
+            
+            //If the up node has a JSON file that it's referencing, need to add those nodes to 
+            //the existing JSON file.
+            //
+            
+            if (up.get("attachment") != null) {
+            	System.out.println(up.get("attachment"));
+            	JsonArray a = up.get("attachment").getAsJsonArray();
+            	String temp = a.get(0).toString().replaceAll("\"", "");
+	            if (temp.endsWith("json")) { //Attachment is a json file
+	            	//Now, we gotta add the json file into it
+	            	//Just for fun, try writing the entire file first
+	            	Path source =  Paths.get("/Users/doranwalsten/AndroidStudioProjects/TechConnectApp/JSON/" + temp);
+	            	Path dest = Paths.get(graph_file.replace(".graphml", ".json"));
+	            	/*
+	            	try {
+	            		Files.copy(source,dest);
+	            	} catch (IOException i) {
+	            		i.printStackTrace();
+	            	}
+	            	*/
+	            	FileWriter jsonWriter = new FileWriter(graph_file.replaceAll(".graphml", ".json"));
+	            	JsonReader jsonReader = new JsonReader(new FileReader("/Users/doranwalsten/AndroidStudioProjects/TechConnectApp/JSON/" + temp));
+            		
+	            	jsonReader.beginArray();
+	            	jsonReader.beginObject();
+	            	RepairNode rn = new RepairNode(); //Will modify every time a new node is encountered
+            		while (jsonReader.hasNext()) {
+            			String n = jsonReader.nextName(); //This is the key
+            			System.out.println(n);
+            			if (n.equals("id")) {
+            				String id = jsonReader.nextString();
+            				if(id.equals("q1")) {
+            					System.out.println("FOUND THE START");
+            					String temp2 = (int) (Math.random() * 999999999) +"";
+            					toAddQ = gson.fromJson(String.format("\"%s\"", temp2), JsonElement.class);
+            					rn.setId(temp2);
+            				} else {
+            					rn.setId(id);
+            				}
+            			} else if (n.equals("question")) {
+            				String q = jsonReader.nextString();
+            				rn.setQuestion(q);
+            			} else if (n.equals("details")) {
+            				String d = jsonReader.nextString();
+            				rn.setDetails(d);
+            			} else if (n.equals("image")) {
+            				if(!jsonReader.hasNext()) {
+            					jsonReader.nextNull();
+            				} else {
+            					List<String> imgs = new ArrayList<String>();
+            					jsonReader.beginArray();
+            					while(jsonReader.hasNext()) {
+            						imgs.add(jsonReader.nextString());
+            					}
+            					rn.setImage(imgs);
+            				}
+            				
+            			} else if (n.equals("attachment")) {
+            				if(!jsonReader.hasNext()) {
+            					System.out.println("TEST");
+            					jsonReader.nextNull();
+            				} else {
+            					//System.out.println("TEST");
+	            				jsonReader.beginArray();
+	            				List<String> atts = new ArrayList<String>();
+	            				while(jsonReader.hasNext()) {
+	            					atts.add(jsonReader.nextString());
+	            				}
+	            				jsonReader.endArray();
+	            			rn.setAttachment(atts);
+            				}
+            				
+            			} else if (n.equals("options")) {
+            				if (!jsonReader.hasNext()) {
+            					jsonReader.nextNull();
+            				} else {
+	            				List<String> opts = new ArrayList<String>();
+	            				jsonReader.beginArray();
+	            				while(jsonReader.hasNext()) {
+	            					opts.add(jsonReader.nextString());
+	            				}
+	            				jsonReader.endArray();
+	            				rn.setOptions(opts);
+            				}
+            			} else { //n.equals("next_question")
+            				if(!jsonReader.hasNext()) {
+            					System.out.println("FOUND THE END");
+            					List<String> nextQ = new ArrayList<String>();
+            					nextQ.add(down.get("id").toString());//Next is the next node
+            					rn.setNextQuestion(nextQ);
+            				} else {
+            					List<String> nextQ = new ArrayList<String>();
+            					jsonReader.beginArray();
+            					while(jsonReader.hasNext()) {
+            						nextQ.add(jsonReader.nextString());
+            					}
+            					jsonReader.endArray();
+            					rn.setNextQuestion(nextQ);
+            				}
+            				//Now want to write the created Object to the JSON file
+
+            				String json_Node = gson.toJson(rn);
+            				JsonObject toAdd = gson.fromJson(json_Node, JsonObject.class);
+            				all.add(toAdd);
+            				//jsonWriter.write(json_Node);
+            				//Now, clear all of the entries for the Repair node
+            				rn.setId("");
+            				rn.setQuestion("");
+            				rn.setDetails("");
+            				rn.setImage(null);
+            				rn.setAttachment(null);
+            				rn.setOptions(null);
+            				rn.setNextQuestion(null);
+            			}
+            		}
+            		jsonReader.endObject();
+            		jsonReader.endArray();
+            		jsonWriter.close();
+	            	jsonReader.close();	
+	            }
             } else {
-            	toAddQ = down.get("id");
+            	if (e.getVertex(Direction.IN).getProperty("done") != null && ((Boolean) e.getVertex(Direction.IN).getProperty("done"))) {
+            		toAddQ = JsonNull.INSTANCE;
+            	} else {
+            		toAddQ = down.get("id");
+            	}
             }
+            
+            
+            
             
             //Getting the past options from existing JSON file
             JsonArray optionText = up.getAsJsonArray("options");
@@ -85,14 +229,14 @@ public class GraphConverter {
             up.add("next_question", toAddQuestionIds);
         }
 
-        JsonArray all = new JsonArray();
+        
         for (Vertex v : verts.keySet()) {
             all.add(verts.get(v));
         }
 
         try {
-            PrintWriter writer = new PrintWriter(new FileWriter(graph_file.replace(".graphml", ".json")));
-            Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create(); //Disable the issues with reading "="
+            PrintWriter writer = new PrintWriter(new FileWriter(graph_file.replace(".graphml", ".json"),true));
+            
             
             writer.print(gson.toJson(all));
             writer.flush();
@@ -117,22 +261,28 @@ public class GraphConverter {
         	JsonArray images = new JsonArray();
         	//Splitting by the semicolon
         	for (String im: v.getProperty("imageURL").toString().split(";")) {
+        		im = im.trim();
         		images.add(im);
         	}
             obj.add("image", images);
-        } else {
+        } 
+        /*else {
         	obj.add("image", JsonNull.INSTANCE);
         }
+        */
         if (v.getPropertyKeys().contains("resources")) { //Attachments to add
         	JsonArray attachments = new JsonArray();
         	//Splitting by the semicolon
         	for (String att: v.getProperty("resources").toString().split(";")) {
+        		att = att.trim();
         		attachments.add(att);
         	}
         	obj.add("attachment",attachments);
-        } else {
+        } 
+        /* else {
         	obj.add("attachment", JsonNull.INSTANCE);
         }
+        */
         obj.add("options", new JsonArray());
         obj.add("next_question", new JsonArray());
         return obj;
