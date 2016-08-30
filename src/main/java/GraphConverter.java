@@ -61,22 +61,22 @@ public class GraphConverter {
             JsonObject down = verts.get(e.getVertex(Direction.IN));
             
             //Getting the Next Question Ids from the JSON object for vertex
-            JsonArray questionIds = up.getAsJsonArray("next_question");
-            JsonArray toAddQuestionIds = new JsonArray();
-            JsonElement toAddQ = JsonNull.INSTANCE;
+            //JsonArray questionIds = up.getAsJsonArray("next_question");
+            //JsonArray toAddQuestionIds = new JsonArray();
+            //JsonElement toAddQ = JsonNull.INSTANCE;
             
             //If the up node has a JSON file that it's referencing, need to add those nodes to 
             //the existing JSON file.
             //
-            
             if (up.get("attachment") != null) {
             	System.out.println(up.get("attachment"));
             	JsonArray a = up.get("attachment").getAsJsonArray();
             	String temp = a.get(0).toString().replaceAll("\"", "");
-	            if (temp.endsWith("json")) { //Attachment is a json file
-	            	//Now, we gotta add the json file into it
+	            if (temp.endsWith("json")) { //Attachment is a json file, need to REPLACE node with the json
 	            	//Just for fun, try writing the entire file first
-	            	Path source =  Paths.get("/Users/doranwalsten/AndroidStudioProjects/TechConnectApp/JSON/" + temp);
+	            	//Will need to replace "up" with the first node of the referenced json file
+	            	up.remove("attachment");
+	            	Path source =  Paths.get("/Users/doranwalsten/Documents/CBID/TechConnect/JSON/" + temp);
 	            	Path dest = Paths.get(graph_file.replace(".graphml", ".json"));
 	            	/*
 	            	try {
@@ -86,20 +86,24 @@ public class GraphConverter {
 	            	}
 	            	*/
 	            	FileWriter jsonWriter = new FileWriter(graph_file.replaceAll(".graphml", ".json"));
-	            	JsonReader jsonReader = new JsonReader(new FileReader("/Users/doranwalsten/AndroidStudioProjects/TechConnectApp/JSON/" + temp));
+	            	JsonReader jsonReader = new JsonReader(new FileReader("/Users/doranwalsten/Documents/CBID/TechConnect/JSON/" + temp));
             		
+	            	boolean first = false; //Whether current JSON element is the first question. Need to replace the fields
+	            	//of "up" with these elements and not add a new element
 	            	jsonReader.beginArray();
-	            	jsonReader.beginObject();
+	            	while(jsonReader.hasNext()) {
+	            	jsonReader.beginObject();//This is each element!
 	            	RepairNode rn = new RepairNode(); //Will modify every time a new node is encountered
             		while (jsonReader.hasNext()) {
             			String n = jsonReader.nextName(); //This is the key
-            			System.out.println(n);
+            			//System.out.println(n);
             			if (n.equals("id")) {
             				String id = jsonReader.nextString();
             				if(id.equals("q1")) {
+            					first = true;
             					System.out.println("FOUND THE START");
             					String temp2 = (int) (Math.random() * 999999999) +"";
-            					toAddQ = gson.fromJson(String.format("\"%s\"", temp2), JsonElement.class);
+            					//toAddQ = gson.fromJson(String.format("\"%s\"", temp2), JsonElement.class);
             					rn.setId(temp2);
             				} else {
             					rn.setId(id);
@@ -119,6 +123,7 @@ public class GraphConverter {
             					while(jsonReader.hasNext()) {
             						imgs.add(jsonReader.nextString());
             					}
+            					jsonReader.endArray();
             					rn.setImage(imgs);
             				}
             				
@@ -134,7 +139,7 @@ public class GraphConverter {
 	            					atts.add(jsonReader.nextString());
 	            				}
 	            				jsonReader.endArray();
-	            			rn.setAttachment(atts);
+	            				rn.setAttachment(atts);
             				}
             				
             			} else if (n.equals("options")) {
@@ -150,27 +155,41 @@ public class GraphConverter {
 	            				rn.setOptions(opts);
             				}
             			} else { //n.equals("next_question")
-            				if(!jsonReader.hasNext()) {
+            				jsonReader.beginArray();
+            				try {
+            					jsonReader.nextNull();//Will succeed if null
             					System.out.println("FOUND THE END");
+            					//If the next node in the file is done, want to maintain that in the copied node
             					List<String> nextQ = new ArrayList<String>();
-            					nextQ.add(down.get("id").toString());//Next is the next node
+            					if (e.getVertex(Direction.IN).getProperty("done") != null && !((Boolean) e.getVertex(Direction.IN).getProperty("done"))) {	
+	            					System.out.println(down.get("id").toString().replaceAll("\"", ""));
+	            					nextQ.add(down.get("id").toString().replaceAll("\"", ""));//Next is the next node
+            					} else {
+            						nextQ.add(null);
+            					}
             					rn.setNextQuestion(nextQ);
-            				} else {
+            				} catch (IllegalStateException g) {
+            					System.out.println("HERE");
             					List<String> nextQ = new ArrayList<String>();
-            					jsonReader.beginArray();
             					while(jsonReader.hasNext()) {
             						nextQ.add(jsonReader.nextString());
             					}
-            					jsonReader.endArray();
             					rn.setNextQuestion(nextQ);
             				}
+            				jsonReader.endArray();
             				//Now want to write the created Object to the JSON file
 
             				String json_Node = gson.toJson(rn);
             				JsonObject toAdd = gson.fromJson(json_Node, JsonObject.class);
-            				all.add(toAdd);
             				//jsonWriter.write(json_Node);
             				//Now, clear all of the entries for the Repair node
+            				if (first) { //If this element is q1, we gotta set everything
+            					setJsonObjectFromRepairNode(up,rn);
+            					//questionIds = up.getAsJsonArray("next_question");
+            					first = false;
+            				} else {
+            					all.add(toAdd);//Only add a new node if it isn't the first one
+            				}
             				rn.setId("");
             				rn.setQuestion("");
             				rn.setDetails("");
@@ -181,54 +200,17 @@ public class GraphConverter {
             			}
             		}
             		jsonReader.endObject();
+	            	}
             		jsonReader.endArray();
             		jsonWriter.close();
 	            	jsonReader.close();	
+	            } else {
+	            	addNewOptionToJsonObject(up,e,down);
 	            }
             } else {
-            	if (e.getVertex(Direction.IN).getProperty("done") != null && ((Boolean) e.getVertex(Direction.IN).getProperty("done"))) {
-            		toAddQ = JsonNull.INSTANCE;
-            	} else {
-            		toAddQ = down.get("id");
-            	}
+            	addNewOptionToJsonObject(up,e,down);
             }
-            
-            
-            
-            
-            //Getting the past options from existing JSON file
-            JsonArray optionText = up.getAsJsonArray("options");
-            JsonArray toAddOptionText = new JsonArray();
-            String toAdd = e.getProperty("option");
-            
-            int total_counter = 0;
-            if (optionText.size() == 0) {
-            	toAddOptionText.add(toAdd);
-            	toAddQuestionIds.add(toAddQ);
-            } else {
-	            while (total_counter < optionText.size()) {
-	            	String temp = optionText.get(total_counter).toString().replaceAll("[\\p{Punct}&&[^0-9]&&[^,]]", "");
-	            	if (toAdd.toString().compareToIgnoreCase(temp) > 0) {
-	            		//This means that the string to add is towards the end of the alphabet
-	            		toAddOptionText.add(toAdd);
-	            		toAddQuestionIds.add(toAddQ);
-	            	} 
-            		toAddOptionText.add(optionText.get(total_counter));
-            		toAddQuestionIds.add(questionIds.get(total_counter));
-	            	total_counter++;
-	            }
-	            if (total_counter == toAddOptionText.size()) {//This means that nothing was added
-	            	toAddOptionText.add(toAdd);
-	            	toAddQuestionIds.add(toAddQ);
-	            }
-            }
-            //
-            //In this step, we simply add the first edge seen to the options array
-            //We just need to insert the text in the proper alphabetical order
-            up.add("options", toAddOptionText);
-            up.add("next_question", toAddQuestionIds);
         }
-
         
         for (Vertex v : verts.keySet()) {
             all.add(verts.get(v));
@@ -241,8 +223,8 @@ public class GraphConverter {
             writer.print(gson.toJson(all));
             writer.flush();
             writer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException er) {
+            er.printStackTrace();
         }
     }
 
@@ -287,4 +269,97 @@ public class GraphConverter {
         obj.add("next_question", new JsonArray());
         return obj;
     }
+    
+    private static void setJsonObjectFromRepairNode(JsonObject orig, RepairNode r) {
+    	//orig.addProperty("id", r.getId());
+		orig.addProperty("question", r.getQuestion());
+		orig.addProperty("details", r.getDetails());
+		//Clear the old arrays (if necessary)
+		orig.remove("image");
+		orig.remove("attachment");
+		orig.remove("options");
+		orig.remove("next_question");
+		
+		if(r.getImage() != null) {
+			JsonArray images = new JsonArray();
+        	//Splitting by the semicolon
+        	for (String im: r.getImage()) {
+        		im = im.trim();
+        		images.add(im);
+        	}
+            orig.add("image", images);
+		}
+		if(r.getAttachment() != null) {
+			JsonArray attachments = new JsonArray();
+        	//Splitting by the semicolon
+        	for (String att: r.getAttachment()) {
+        		att = att.trim();
+        		attachments.add(att);
+        	}
+        	orig.add("attachment",attachments);
+		}
+		JsonArray options = new JsonArray();
+		for (String opt: r.getOptions()) {
+			opt = opt.trim();
+			System.out.println(opt);
+			options.add(opt);
+		}
+		
+		orig.add("options", options);
+		JsonArray next_q = new JsonArray();
+		for (String q: r.getNextQuestion()) {
+			q = q.trim();
+			next_q.add(q);
+		}
+		orig.add("next_question", next_q);
+    }
+    private static void addNewOptionToJsonObject(JsonObject up, Edge e, JsonObject down) {
+    	//Set up all of the option arrays I need and get the initial entires
+    	JsonArray questionIds = up.getAsJsonArray("next_question");
+    	JsonArray toAddQuestionIds = new JsonArray();
+    	JsonArray optionText = up.getAsJsonArray("options");
+        JsonArray toAddOptionText = new JsonArray();
+        
+        //Get the new next question to add
+        JsonElement toAddQ;
+    	System.out.println(e.getVertex(Direction.IN).getProperty("done"));
+    	if (e.getVertex(Direction.IN).getProperty("done") != null && ((Boolean) e.getVertex(Direction.IN).getProperty("done"))) {
+    		toAddQ = JsonNull.INSTANCE;
+    	} else {
+    		toAddQ = down.get("id");
+    	}
+    	
+    	//Get the new next option to add
+        String toAdd = e.getProperty("option");
+        
+        System.out.println(up.get("question"));
+        int total_counter = 0;
+        if (optionText.size() == 0) {
+        	toAddOptionText.add(toAdd);
+        	toAddQuestionIds.add(toAddQ);
+        } else {
+            while (total_counter < optionText.size()) {
+            	String temp = optionText.get(total_counter).toString().replaceAll("[\\p{Punct}&&[^0-9]&&[^,]]", "");
+            	if (toAdd.toString().compareToIgnoreCase(temp) > 0) {
+            		//This means that the string to add is towards the end of the alphabet
+            		toAddOptionText.add(toAdd);
+            		toAddQuestionIds.add(toAddQ);
+            	} 
+        		toAddOptionText.add(optionText.get(total_counter));
+        		toAddQuestionIds.add(questionIds.get(total_counter));
+            	total_counter++;
+            }
+            if (total_counter == toAddOptionText.size()) {//This means that nothing was added
+            	toAddOptionText.add(toAdd);
+            	toAddQuestionIds.add(toAddQ);
+            }
+        }
+        //
+        //In this step, we simply add the first edge seen to the options array
+        //We just need to insert the text in the proper alphabetical order
+        up.add("options", toAddOptionText);
+        up.add("next_question", toAddQuestionIds);
+    }
 }
+
+
