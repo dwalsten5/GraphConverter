@@ -28,12 +28,12 @@ import static java.nio.file.StandardCopyOption.*;
 
 public class GraphConverter {
     static String graph_file;
+    static Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create(); 
+    static JsonArray all = new JsonArray(); //This will be the compiled array of JSON objects
+    static Map<String,JsonObject> entry_pts = new HashMap<String,JsonObject>();//Entry point for the referenced map
+    static Map<String,ArrayList<JsonObject>> exit_pts = new HashMap<String,ArrayList<JsonObject>>();//Exit points from referenced map
 
     public static void main(String[] args) throws IOException, FileNotFoundException {
-    	Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create(); //Disable the issues with reading "="
-        JsonArray all = new JsonArray(); //This will be the compiled array of JSON objects
-        
-        
         try {
             graph_file = args[0];
             System.out.println("File: " + graph_file);
@@ -46,8 +46,8 @@ public class GraphConverter {
         Graph graph = new TinkerGraph();
         GraphMLReader reader = new GraphMLReader(graph);
         //Store any referenced charts for flowchart-ception
-        Map<String,JsonObject> entry_pts = new HashMap<String,JsonObject>();//Entry point for the referenced map
-        Map<String,ArrayList<JsonObject>> exit_pts = new HashMap<String,ArrayList<JsonObject>>();//Exit points from referenced map
+        
+        
         
         try {
             reader.inputGraph(graph_file);
@@ -64,184 +64,31 @@ public class GraphConverter {
             JsonObject up = verts.get(e.getVertex(Direction.OUT));
             JsonObject down = verts.get(e.getVertex(Direction.IN));
             
-            //Getting the Next Question Ids from the JSON object for vertex
-            //JsonArray questionIds = up.getAsJsonArray("next_question");
-            //JsonArray toAddQuestionIds = new JsonArray();
-            //JsonElement toAddQ = JsonNull.INSTANCE;
-            
             //If the up node has a JSON file that it's referencing, need to add those nodes to 
             //the existing JSON file.
             
             if (up.get("attachment") != null) {
             	System.out.println(up.get("attachment"));
             	JsonArray a = up.get("attachment").getAsJsonArray();
-            	String temp = a.get(0).toString().replaceAll("\"", "");
+            	String name = a.get(0).toString().replaceAll("\"", "");
             	String context = up.get("details").toString().replaceAll("\"", "");
-	            if (temp.endsWith("json")) { //Attachment is a json file, need to REPLACE node with the json
+	            if (name.endsWith("json")) { //Attachment is a json file, need to REPLACE node with the json
 	            	System.out.println(context);
 	            	//First, check to see if we already have this chart in the file
-	            	if (entry_pts.containsKey(temp)) { // We have already seen this dude before
+	            	if (entry_pts.containsKey(name)) { // We have already seen this dude before
 	            		//Copy the head node to existing node in the chart
-	            		JsonObject toCopy = entry_pts.get(temp);
+	            		JsonObject toCopy = entry_pts.get(name);
 	            		copyJsonObject(toCopy,up);
 	            		//Go to the end of the referenced chart and add the new next question option to the end
-	            		for (JsonObject exit_pt : exit_pts.get(temp)) {
+	            		for (JsonObject exit_pt : exit_pts.get(name)) {
 	            			//Check to see if this actually sets the new entry in the objectf
 	            			exit_pt.get("options").getAsJsonArray().add(context);
 	            			exit_pt.get("next_question").getAsJsonArray().add(down.get("id").toString().replaceAll("\"", ""));
 	            		}
 	            	} else {
-		            	//Just for fun, try writing the entire file first
-		            	//Will need to replace "up" with the first node of the referenced json file
-		            	up.remove("attachment");
-		            	Path source =  Paths.get("/Users/doranwalsten/Documents/CBID/TechConnect/JSON/" + temp);
-		            	Path dest = Paths.get(graph_file.replace(".graphml", ".json"));
-		            	/*
-		            	try {
-		            		Files.copy(source,dest);
-		            	} catch (IOException i) {
-		            		i.printStackTrace();
-		            	}
-		            	*/
-		            	FileWriter jsonWriter = new FileWriter(graph_file.replaceAll(".graphml", ".json"));
-		            	JsonReader jsonReader = new JsonReader(new FileReader("/Users/doranwalsten/Documents/CBID/TechConnect/JSON/" + temp));
-	            		
-		            	boolean first = false; //Whether current JSON element is the first question. Need to replace the fields in existing object
-		            	boolean end = false; //Whether current JSON element is an exit point. Need to wait to print to output file until confident no more options
-		            	
-		            	//of "up" with these elements and not add a new element
-		            	jsonReader.beginArray();
-		            	while(jsonReader.hasNext()) {
-		            	jsonReader.beginObject();//This is each element!
-		            	RepairNode rn = new RepairNode(); //Will modify every time a new node is encountered
-	            		while (jsonReader.hasNext()) {
-	            			String n = jsonReader.nextName(); //This is the key
-	            			if (n.equals("id")) {
-	            				String id = jsonReader.nextString();
-	            				if(id.equals("q1")) {
-	            					first = true;
-	            					System.out.println("FOUND THE START");
-	            					String temp2 = (int) (Math.random() * 999999999) +"";
-	            					rn.setId(temp2);
-	            				} else {
-	            					rn.setId(id);
-	            				}
-	            			} else if (n.equals("question")) {
-	            				String q = jsonReader.nextString();
-	            				rn.setQuestion(q);
-	            			} else if (n.equals("details")) {
-	            				String d = jsonReader.nextString();
-	            				rn.setDetails(d);
-	            			} else if (n.equals("image")) {
-	            				if(!jsonReader.hasNext()) {
-	            					jsonReader.nextNull();
-	            				} else {
-	            					List<String> imgs = new ArrayList<String>();
-	            					jsonReader.beginArray();
-	            					while(jsonReader.hasNext()) {
-	            						imgs.add(jsonReader.nextString());
-	            					}
-	            					jsonReader.endArray();
-	            					rn.setImage(imgs);
-	            				}
-	            				
-	            			} else if (n.equals("attachment")) {
-	            				if(!jsonReader.hasNext()) {
-	            					System.out.println("TEST");
-	            					jsonReader.nextNull();
-	            				} else {
-	            					//System.out.println("TEST");
-		            				jsonReader.beginArray();
-		            				List<String> atts = new ArrayList<String>();
-		            				while(jsonReader.hasNext()) {
-		            					atts.add(jsonReader.nextString());
-		            				}
-		            				jsonReader.endArray();
-		            				rn.setAttachment(atts);
-	            				}
-	            				
-	            			} else if (n.equals("options")) {
-	            				if (!jsonReader.hasNext()) {
-	            					jsonReader.nextNull();
-	            				} else {
-		            				List<String> opts = new ArrayList<String>();
-		            				jsonReader.beginArray();
-		            				while(jsonReader.hasNext()) {
-		            					opts.add(jsonReader.nextString());
-		            				}
-		            				jsonReader.endArray();
-		            				rn.setOptions(opts);
-	            				}
-	            			} else { //n.equals("next_question")
-	            				jsonReader.beginArray();
-	            				try {
-	            					jsonReader.nextNull();//Will succeed if null
-	            					System.out.println("FOUND AN END");
-	            					end = true;
-	            					//If the next node in the file is done, want to maintain that in the copied node
-	            					List<String> nextQ = new ArrayList<String>();
-	            					System.out.println(down.get("id").toString().replaceAll("\"", ""));
-	            					if (e.getVertex(Direction.IN).getProperty("done") != null && ((Boolean) e.getVertex(Direction.IN).getProperty("done"))) {	
-		            					//System.out.println(down.get("id").toString().replaceAll("\"", ""));
-		            					nextQ.add(null);
-	            					} else {
-	            						nextQ.add(down.get("id").toString().replaceAll("\"", ""));//Next is the next node
-	            					}
-	            					rn.setNextQuestion(nextQ);
-	            					
-	            					//Set the Option to be the context of the flowchart-ception
-	            					List<String> nextOpt = new ArrayList<String>();
-	            					nextOpt.add(context);
-	            					rn.setOptions(nextOpt);
-	            					
-	            				} catch (IllegalStateException g) {
-	            					System.out.println("HERE");
-	            					List<String> nextQ = new ArrayList<String>();
-	            					while(jsonReader.hasNext()) {
-	            						nextQ.add(jsonReader.nextString());
-	            					}
-	            					rn.setNextQuestion(nextQ);
-	            				}
-	            				jsonReader.endArray();
-	            				//Now want to write the created Object to the JSON file
-	
-	            				String json_Node = gson.toJson(rn);
-	            				JsonObject toAdd = gson.fromJson(json_Node, JsonObject.class);
-	            				//jsonWriter.write(json_Node);
-	            				//Now, clear all of the entries for the Repair node
-	            				if (first) { //If this element is q1, we gotta set everything
-	            					setJsonObjectFromRepairNode(up,rn);
-	            					//Need to add JsonObject to HashMap
-	            					entry_pts.put(temp, up);
-	            					//Now, we can 
-	            					first = false;
-	            				} else if (end) {
-	            					if (!exit_pts.containsKey(temp)) {//Not initialized yet
-	            						System.out.println("Adding exit point");
-	            						ArrayList<JsonObject> exits = new ArrayList<JsonObject>();
-	            						exits.add(toAdd);
-	            						exit_pts.put(temp, exits);
-	            					} else {
-	            						exit_pts.get(temp).add(toAdd);//Don't want to print this stuff to the file quite yet
-	            					}
-	            					end = false;
-	            				} else {
-	            					all.add(toAdd);//Only add a new node if it isn't the first one
-	            				}
-	            				rn.setId("");
-	            				rn.setQuestion("");
-	            				rn.setDetails("");
-	            				rn.setImage(null);
-	            				rn.setAttachment(null);
-	            				rn.setOptions(null);
-	            				rn.setNextQuestion(null);
-	            			}
-	            		}
-	            		jsonReader.endObject();
-		            	}
-	            		jsonReader.endArray();
-	            		jsonWriter.close();
-		            	jsonReader.close();
+	            		//For the first time seeing the referenced chart, copy entirely into the new file
+	            		//However, do not write the exit points until every possible reference is explored
+	            		writeReferencedChartToFile(name, context, up, e, down);
 	            	}
 	            } else {
 	            	addNewOptionToJsonObject(up,e,down);
@@ -263,8 +110,6 @@ public class GraphConverter {
 
         try {
             PrintWriter writer = new PrintWriter(new FileWriter(graph_file.replace(".graphml", ".json"),true));
-            
-            
             writer.print(gson.toJson(all));
             writer.flush();
             writer.close();
@@ -360,6 +205,7 @@ public class GraphConverter {
     }
     
     private static void copyJsonObject(JsonObject toCopy, JsonObject dest) {
+
     	dest.add("question",toCopy.get("question"));
     	dest.add("details", toCopy.get("details"));
     	dest.remove("image");
@@ -397,6 +243,157 @@ public class GraphConverter {
 		dest.add("next_question", next_q);
     	
     }
+    
+    /**
+     * This is a function which is called whenever a referenced flowchart is inserted into the existing chart
+     * @param name - Name of the json file referenced. Used as the key in the maps which store all of the referenced charts
+     * @param context - The context in which the referenced chart is called. Used to generate the options at end
+     * @param up - Vertex which referenced the chart
+     * @param e - edge between that vertex and next vertex in original chart
+     * @param down - Next vertex in original chart
+     * @throws IOException
+     */
+    private static void writeReferencedChartToFile(String name, String context, JsonObject up, Edge e, JsonObject down ) throws IOException{
+    	FileWriter jsonWriter = new FileWriter(graph_file.replaceAll(".graphml", ".json"));
+    	JsonReader jsonReader = new JsonReader(new FileReader("/Users/doranwalsten/Documents/CBID/TechConnect/JSON/" + name));
+		
+    	boolean first = false; //Whether current JSON element is the first question. Need to replace the fields in existing object
+    	boolean end = false; //Whether current JSON element is an exit point. Need to wait to print to output file until confident no more options
+    	
+    	//This is the way we take steps through the entire JSON file
+    	jsonReader.beginArray();
+    	while(jsonReader.hasNext()) {
+    		jsonReader.beginObject();//This is each element!
+    		RepairNode rn = new RepairNode(); //Will modify every time a new node is encountered
+    		while (jsonReader.hasNext()) {
+    			String n = jsonReader.nextName(); //This is the key
+    			if (n.equals("id")) {
+    				String id = jsonReader.nextString();
+    				if(id.equals("q1")) {
+    					first = true;
+    					System.out.println("FOUND THE START");
+    					String temp2 = (int) (Math.random() * 999999999) +"";
+    					rn.setId(temp2);
+    				} else {
+    					rn.setId(id);
+    				}
+    			} else if (n.equals("question")) {
+    				String q = jsonReader.nextString();
+    				rn.setQuestion(q);
+    			} else if (n.equals("details")) {
+    				String d = jsonReader.nextString();
+    				rn.setDetails(d);
+    			} else if (n.equals("image")) {
+    				if(!jsonReader.hasNext()) {
+    					jsonReader.nextNull();
+    				} else {
+    					List<String> imgs = new ArrayList<String>();
+    					jsonReader.beginArray();
+    					while(jsonReader.hasNext()) {
+    						imgs.add(jsonReader.nextString());
+    					}
+    					jsonReader.endArray();
+    					rn.setImage(imgs);
+    				}
+    				
+    			} else if (n.equals("attachment")) {
+    				if(!jsonReader.hasNext()) {
+    					System.out.println("TEST");
+    					jsonReader.nextNull();
+    				} else {
+    					//System.out.println("TEST");
+        				jsonReader.beginArray();
+        				List<String> atts = new ArrayList<String>();
+        				while(jsonReader.hasNext()) {
+        					atts.add(jsonReader.nextString());
+        				}
+        				jsonReader.endArray();
+        				rn.setAttachment(atts);
+    				}
+    				
+    			} else if (n.equals("options")) {
+    				if (!jsonReader.hasNext()) {
+    					jsonReader.nextNull();
+    				} else {
+        				List<String> opts = new ArrayList<String>();
+        				jsonReader.beginArray();
+        				while(jsonReader.hasNext()) {
+        					opts.add(jsonReader.nextString());
+        				}
+        				jsonReader.endArray();
+        				rn.setOptions(opts);
+    				}
+    			} else { //n.equals("next_question")
+    				jsonReader.beginArray();
+    				try {
+    					jsonReader.nextNull();//Will succeed if null
+    					System.out.println("FOUND AN END");
+    					end = true;
+    					//If the next node in the file is done, want to maintain that in the copied node
+    					List<String> nextQ = new ArrayList<String>();
+    					System.out.println(down.get("id").toString().replaceAll("\"", ""));
+    					if (e.getVertex(Direction.IN).getProperty("done") != null && ((Boolean) e.getVertex(Direction.IN).getProperty("done"))) {	
+        					//System.out.println(down.get("id").toString().replaceAll("\"", ""));
+        					nextQ.add(null);
+    					} else {
+    						nextQ.add(down.get("id").toString().replaceAll("\"", ""));//Next is the next node
+    					}
+    					rn.setNextQuestion(nextQ);
+    					
+    					//Set the Option to be the context of the flowchart-ception
+    					List<String> nextOpt = new ArrayList<String>();
+    					nextOpt.add(context);
+    					rn.setOptions(nextOpt);
+    					
+    				} catch (IllegalStateException g) {
+    					System.out.println("HERE");
+    					List<String> nextQ = new ArrayList<String>();
+    					while(jsonReader.hasNext()) {
+    						nextQ.add(jsonReader.nextString());
+    					}
+    					rn.setNextQuestion(nextQ);
+    				}
+    				jsonReader.endArray();
+    				//Now want to write the created Object to the JSON file
+
+    				String json_Node = gson.toJson(rn);
+    				JsonObject toAdd = gson.fromJson(json_Node, JsonObject.class);
+    				//jsonWriter.write(json_Node);
+    				//Now, clear all of the entries for the Repair node
+    				if (first) { //If this element is q1, we gotta set everything
+    					setJsonObjectFromRepairNode(up,rn);
+    					//Need to add JsonObject to HashMap
+    					entry_pts.put(name, up);
+    					//Now, we can 
+    					first = false;
+    				} else if (end) {
+    					if (!exit_pts.containsKey(name)) {//Not initialized yet
+    						System.out.println("Adding exit point");
+    						ArrayList<JsonObject> exits = new ArrayList<JsonObject>();
+    						exits.add(toAdd);
+    						exit_pts.put(name, exits);
+    					} else {
+    						exit_pts.get(name).add(toAdd);//Don't want to print this stuff to the file quite yet
+    					}
+    					end = false;
+    				} else {
+    					all.add(toAdd);//Only add a new node if it isn't the first one
+    				}
+    				rn.setId("");
+    				rn.setQuestion("");
+    				rn.setDetails("");
+    				rn.setImage(null);
+    				rn.setAttachment(null);
+    				rn.setOptions(null);
+    				rn.setNextQuestion(null);
+    			}
+    		}
+    		jsonReader.endObject();
+    	}
+		jsonReader.endArray();
+		jsonWriter.close();
+    	jsonReader.close();
+	}
     private static void addNewOptionToJsonObject(JsonObject up, Edge e, JsonObject down) {
     	//Set up all of the option arrays I need and get the initial entires
     	JsonArray questionIds = up.getAsJsonArray("next_question");
