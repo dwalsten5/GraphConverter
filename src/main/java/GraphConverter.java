@@ -28,94 +28,97 @@ import static java.nio.file.StandardCopyOption.*;
 
 public class GraphConverter {
     static String graph_file;
+    static String JSON_DIRECTORY = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/";
+    static String GRAPHML_DIRECTORY = "/Users/doranwalsten/Documents/CBID/TechConnect/yEd/Detailed_Maps/";
     static Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create(); 
     static JsonArray all = new JsonArray(); //This will be the compiled array of JSON objects
     static Map<String,JsonObject> entry_pts = new HashMap<String,JsonObject>();//Entry point for the referenced map
     static Map<String,ArrayList<JsonObject>> exit_pts = new HashMap<String,ArrayList<JsonObject>>();//Exit points from referenced map
 
     public static void main(String[] args) throws IOException, FileNotFoundException {
-        try {
-            graph_file = args[0];
-            System.out.println("File: " + graph_file);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            System.out.println("Must include a GraphML file to parse");//Probably will need to catch this error at some point
-            System.exit(0);
-        }
-
-        //Read in the GraphML file
-        Graph graph = new TinkerGraph();
-        GraphMLReader reader = new GraphMLReader(graph);
-        //Store any referenced charts for flowchart-ception
         
-        
-        
-        try {
-            reader.inputGraph(graph_file);
-        } catch (IOException e) {
-            System.out.println("INVALID FILE");
-            e.printStackTrace();
-        }
-
-        Map<Vertex, JsonObject> verts = new HashMap<Vertex, JsonObject>();
-        for (Vertex v : graph.getVertices()) {
-            verts.put(v, vertexToJsonObject(v));
-        }
-        for (Edge e : graph.getEdges()) {
-            JsonObject up = verts.get(e.getVertex(Direction.OUT));
-            JsonObject down = verts.get(e.getVertex(Direction.IN));
-            
-            //If the up node has a JSON file that it's referencing, need to add those nodes to 
-            //the existing JSON file.
-            
-            if (up.get("attachment") != null) {
-            	System.out.println(up.get("attachment"));
-            	JsonArray a = up.get("attachment").getAsJsonArray();
-            	String name = a.get(0).toString().replaceAll("\"", "");
-            	String context = up.get("details").toString().replaceAll("\"", "");
-	            if (name.endsWith("json")) { //Attachment is a json file, need to REPLACE node with the json
-	            	System.out.println(context);
-	            	//First, check to see if we already have this chart in the file
-	            	if (entry_pts.containsKey(name)) { // We have already seen this dude before
-	            		//Copy the head node to existing node in the chart
-	            		JsonObject toCopy = entry_pts.get(name);
-	            		copyJsonObject(toCopy,up);
-	            		//Go to the end of the referenced chart and add the new next question option to the end
-	            		for (JsonObject exit_pt : exit_pts.get(name)) {
-	            			//Check to see if this actually sets the new entry in the objectf
-	            			exit_pt.get("options").getAsJsonArray().add(context);
-	            			exit_pt.get("next_question").getAsJsonArray().add(down.get("id").toString().replaceAll("\"", ""));
-	            		}
-	            	} else {
-	            		//For the first time seeing the referenced chart, copy entirely into the new file
-	            		//However, do not write the exit points until every possible reference is explored
-	            		writeReferencedChartToFile(name, context, up, e, down);
-	            	}
+    	for (String g: args) {
+	    	try {
+	            graph_file = g;
+	            System.out.println("File: " + graph_file);
+	        } catch (ArrayIndexOutOfBoundsException e) {
+	            System.out.println("Must include a GraphML file to parse");//Probably will need to catch this error at some point
+	            System.exit(0);
+	        }
+	
+	        //Read in the GraphML file
+	        Graph graph = new TinkerGraph();
+	        GraphMLReader reader = new GraphMLReader(graph);
+	        //Store any referenced charts for flowchart-ception
+	        
+	        try {
+	            reader.inputGraph(GRAPHML_DIRECTORY + graph_file);
+	        } catch (IOException e) {
+	            System.out.println("INVALID FILE");
+	            e.printStackTrace();
+	        }
+	
+	        Map<Vertex, JsonObject> verts = new HashMap<Vertex, JsonObject>();
+	        for (Vertex v : graph.getVertices()) {
+	            verts.put(v, vertexToJsonObject(v));
+	        }
+	        for (Edge e : graph.getEdges()) {
+	            JsonObject up = verts.get(e.getVertex(Direction.OUT));
+	            JsonObject down = verts.get(e.getVertex(Direction.IN));
+	            
+	            //If the up node has a JSON file that it's referencing, need to add those nodes to 
+	            //the existing JSON file.
+	            
+	            if (up.get("attachment") != null) {
+	            	System.out.println(up.get("attachment"));
+	            	JsonArray a = up.get("attachment").getAsJsonArray();
+	            	String name = a.get(0).toString().replaceAll("\"", "");
+	            	String context = up.get("details").toString().replaceAll("\"", "");
+		            if (name.endsWith("json")) { //Attachment is a json file, need to REPLACE node with the json
+		            	System.out.println(context);
+		            	//First, check to see if we already have this chart in the file
+		            	if (entry_pts.containsKey(name)) { // We have already seen this dude before
+		            		//Copy the head node to existing node in the chart
+		            		JsonObject toCopy = entry_pts.get(name);
+		            		copyJsonObject(toCopy,up);
+		            		//Go to the end of the referenced chart and add the new next question option to the end
+		            		for (JsonObject exit_pt : exit_pts.get(name)) {
+		            			//Check to see if this actually sets the new entry in the objectf
+		            			exit_pt.get("options").getAsJsonArray().add(context);
+		            			exit_pt.get("next_question").getAsJsonArray().add(down.get("id").toString().replaceAll("\"", ""));
+		            		}
+		            	} else {
+		            		//For the first time seeing the referenced chart, copy entirely into the new file
+		            		//However, do not write the exit points until every possible reference is explored
+		            		writeReferencedChartToFile(name, context, up, e, down);
+		            	}
+		            } else {
+		            	addNewOptionToJsonObject(up,e,down);
+		            }
 	            } else {
 	            	addNewOptionToJsonObject(up,e,down);
 	            }
-            } else {
-            	addNewOptionToJsonObject(up,e,down);
-            }
-        }
-        
-        for (String key: exit_pts.keySet()) {
-        	System.out.println(key);
-        	for (JsonObject obj : exit_pts.get(key)) {
-        		all.add(obj);
-        	}
-        }
-        for (Vertex v : verts.keySet()) {
-            all.add(verts.get(v));
-        }
-
-        try {
-            PrintWriter writer = new PrintWriter(new FileWriter(graph_file.replace(".graphml", ".json"),true));
-            writer.print(gson.toJson(all));
-            writer.flush();
-            writer.close();
-        } catch (IOException er) {
-            er.printStackTrace();
-        }
+	        }
+	        
+	        for (String key: exit_pts.keySet()) {
+	        	System.out.println(key);
+	        	for (JsonObject obj : exit_pts.get(key)) {
+	        		all.add(obj);
+	        	}
+	        }
+	        for (Vertex v : verts.keySet()) {
+	            all.add(verts.get(v));
+	        }
+	
+	        try {
+	            PrintWriter writer = new PrintWriter(new FileWriter(JSON_DIRECTORY + graph_file.replace(".graphml", ".json")));
+	            writer.print(gson.toJson(all));
+	            writer.flush();
+	            writer.close();
+	        } catch (IOException er) {
+	            er.printStackTrace();
+	        }
+    	}
     }
 
     private static JsonObject vertexToJsonObject(Vertex v) {
@@ -254,8 +257,8 @@ public class GraphConverter {
      * @throws IOException
      */
     private static void writeReferencedChartToFile(String name, String context, JsonObject up, Edge e, JsonObject down ) throws IOException{
-    	FileWriter jsonWriter = new FileWriter(graph_file.replaceAll(".graphml", ".json"));
-    	JsonReader jsonReader = new JsonReader(new FileReader("/Users/doranwalsten/Documents/CBID/TechConnect/JSON/" + name));
+    	FileWriter jsonWriter = new FileWriter(JSON_DIRECTORY + graph_file.replaceAll(".graphml", ".json"));
+    	JsonReader jsonReader = new JsonReader(new FileReader(JSON_DIRECTORY + name));
 		
     	boolean first = false; //Whether current JSON element is the first question. Need to replace the fields in existing object
     	boolean end = false; //Whether current JSON element is an exit point. Need to wait to print to output file until confident no more options
