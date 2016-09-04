@@ -31,13 +31,16 @@ public class GraphConverter {
     static String JSON_DIRECTORY = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/";
     static String GRAPHML_DIRECTORY = "/Users/doranwalsten/Documents/CBID/TechConnect/yEd/Detailed_Maps/";
     static Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create(); 
-    static JsonArray all = new JsonArray(); //This will be the compiled array of JSON objects
+    //static JsonArray all = new JsonArray(); //This will be the compiled array of JSON objects
     static Map<String,JsonObject> entry_pts = new HashMap<String,JsonObject>();//Entry point for the referenced map
     static Map<String,ArrayList<JsonObject>> exit_pts = new HashMap<String,ArrayList<JsonObject>>();//Exit points from referenced map
 
     public static void main(String[] args) throws IOException, FileNotFoundException {
         
     	for (String g: args) {
+    		JsonArray all = new JsonArray(); //This will be the compiled array of JSON objects for each file
+    		entry_pts.clear();
+    		exit_pts.clear();
 	    	try {
 	            graph_file = g;
 	            System.out.println("File: " + graph_file);
@@ -90,7 +93,7 @@ public class GraphConverter {
 		            	} else {
 		            		//For the first time seeing the referenced chart, copy entirely into the new file
 		            		//However, do not write the exit points until every possible reference is explored
-		            		writeReferencedChartToFile(name, context, up, e, down);
+		            		writeReferencedChartToFile(all, name, context, up, e, down);
 		            	}
 		            } else {
 		            	addNewOptionToJsonObject(up,e,down);
@@ -256,7 +259,7 @@ public class GraphConverter {
      * @param down - Next vertex in original chart
      * @throws IOException
      */
-    private static void writeReferencedChartToFile(String name, String context, JsonObject up, Edge e, JsonObject down ) throws IOException{
+    private static void writeReferencedChartToFile(JsonArray all, String name, String context, JsonObject up, Edge e, JsonObject down ) throws IOException{
     	FileWriter jsonWriter = new FileWriter(JSON_DIRECTORY + graph_file.replaceAll(".graphml", ".json"));
     	JsonReader jsonReader = new JsonReader(new FileReader(JSON_DIRECTORY + name));
 		
