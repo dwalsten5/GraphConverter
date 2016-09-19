@@ -9,6 +9,8 @@ import com.tinkerpop.blueprints.impls.tg.TinkerGraph;
 import com.tinkerpop.blueprints.util.io.graphml.GraphMLReader;
 import com.tinkerpop.blueprints.util.io.graphson.GraphSONWriter;
 
+import main.java.model.FlowChart;
+
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -31,7 +33,12 @@ public class GraphConverter {
     static String graph_file;
     static String JSON_DIRECTORY = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/";
     static String GRAPHML_DIRECTORY = "/Users/doranwalsten/Documents/CBID/TechConnect/yEd/Detailed_Maps/";
-    static Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create(); 
+    static Gson gson = new GsonBuilder()
+    		.registerTypeAdapter(FlowChart.class, new FlowChartSerializer())
+    		.setPrettyPrinting()
+    		.disableHtmlEscaping()
+    		.create(); 
+    
     //static JsonArray all = new JsonArray(); //This will be the compiled array of JSON objects
     static Map<String,JsonObject> entry_pts = new HashMap<String,JsonObject>();//Entry point for the referenced map
     static Map<String,ArrayList<JsonObject>> exit_pts = new HashMap<String,ArrayList<JsonObject>>();//Exit points from referenced map
@@ -64,6 +71,7 @@ public class GraphConverter {
 	        }
 	        
 	        //Test output as graph
+	        /*
 	        JsonObject toWrite = new JsonObject();
 	        JsonArray vertices = new JsonArray();
 	        JsonArray edges = new JsonArray();
@@ -82,6 +90,10 @@ public class GraphConverter {
 	        toWrite.add("all_res", all_res);
 	        toWrite.add("vertices",vertices);
 	        toWrite.add("edges", edges);
+	        */
+	        FlowChart test_flowchart = new FlowChart();
+	        test_flowchart.setId("Test String");
+	        test_flowchart.setGraph((TinkerGraph) graph);
 	        
 	        /*
 	        Map<Vertex, JsonObject> verts = new HashMap<Vertex, JsonObject>();
@@ -139,7 +151,7 @@ public class GraphConverter {
 	        try {
 	            PrintWriter writer = new PrintWriter(new FileWriter(JSON_DIRECTORY + graph_file.replace(".graphml", ".json")));
 	           //writer.print(gson.toJson(all));
-	            writer.print(gson.toJson(toWrite));
+	            writer.print(gson.toJson(test_flowchart));
 	            writer.flush();
 	            writer.close();
 	        } catch (IOException er) {
@@ -148,68 +160,7 @@ public class GraphConverter {
 	        
     	}
     }
-
-    private static JsonObject vertexToJsonObject(Vertex v, JsonArray res) {
-        JsonObject obj = new JsonObject();
-        String id;
-        if (v.getProperty("start") != null && ((Boolean) v.getProperty("start"))) {
-            id = "q1";
-        } else {
-            id = (int) (Math.random() * 999999999) + "";
-        }
-        obj.addProperty("_id", id);
-        obj.addProperty("name", v.getProperty("question") == null ? "" : v.getProperty("question").toString());
-        obj.addProperty("details", v.getProperty("details") == null ? "" : v.getProperty("details").toString());
-        if (v.getPropertyKeys().contains("imageURL")) {
-        	JsonArray images = new JsonArray();
-        	//Splitting by the semicolon
-        	for (String im: v.getProperty("imageURL").toString().split(";")) {
-        		im = im.trim();
-        		images.add(im);
-        		res.add(im);
-        	}
-            obj.add("images", images);
-        } 
-        /*else {
-        	obj.add("image", JsonNull.INSTANCE);
-        }
-        */
-        if (v.getPropertyKeys().contains("resources")) { //Attachments to add
-        	JsonArray resources = new JsonArray();
-        	//Splitting by the semicolon
-        	for (String r: v.getProperty("resources").toString().split(";")) {
-        		r = r.trim();
-        		resources.add(r);
-        		if (!r.endsWith(".json")) {
-        			res.add(r);
-        		}
-        	}
-        	obj.add("resources",resources);
-        } 
-        /* else {
-        	obj.add("attachment", JsonNull.INSTANCE);
-        }
-        */
-        //No longer need the options or next question fields
-        //obj.add("options", new JsonArray());
-        //obj.add("next_question", new JsonArray());
-        return obj;
-    }
     
-    //Using this method to convert to JsonObject edges
-    private static JsonObject edgeToJsonObject(Edge e, Map<Vertex, JsonObject> verts) {
-    	JsonObject obj = new JsonObject();
-    	String id = (int) (Math.random() * 999999999) + "";
-    	obj.addProperty("_id", id);
-    	obj.addProperty("_label", e.getLabel());
-    	//Get the associated JsonObjects for each vertex
-    	JsonObject up = verts.get(e.getVertex(Direction.OUT));
-        JsonObject down = verts.get(e.getVertex(Direction.IN));
-    	obj.addProperty("_outV", up.get("_id").getAsString());
-    	obj.addProperty("_inV", down.get("_id").getAsString());
-    	
-    	return obj;
-    }
     private static void setJsonObjectFromRepairNode(JsonObject orig, RepairNode r) {
     	//orig.addProperty("id", r.getId());
 		orig.addProperty("question", r.getQuestion());
