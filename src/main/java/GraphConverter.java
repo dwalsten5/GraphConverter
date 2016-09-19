@@ -65,13 +65,24 @@ public class GraphConverter {
 	        
 	        //Test output as graph
 	        JsonObject toWrite = new JsonObject();
-	        JsonArray verts = new JsonArray();
+	        JsonArray vertices = new JsonArray();
+	        JsonArray edges = new JsonArray();
+	        Map<Vertex, JsonObject> verts = new HashMap<Vertex, JsonObject>();
 	        for (Vertex v : graph.getVertices()) {
 	        	//Have to use this dumb approach because blueprints doesn't work with Gson
-	        	verts.add(vertexToJsonObject(v,all_res));
+	        	verts.put(v, vertexToJsonObject(v,all_res));
 	        }
-	        toWrite.add("vertices",verts);
+	        //Now that we have the map, can iterate over the edges
+	        for (Edge e : graph.getEdges()) {
+	        	edges.add(edgeToJsonObject(e,verts));
+	        }
+	        for (Vertex v : verts.keySet()) {
+	        	vertices.add(verts.get(v));
+	        }
 	        toWrite.add("all_res", all_res);
+	        toWrite.add("vertices",vertices);
+	        toWrite.add("edges", edges);
+	        
 	        /*
 	        Map<Vertex, JsonObject> verts = new HashMap<Vertex, JsonObject>();
 	        for (Vertex v : graph.getVertices()) {
@@ -146,8 +157,8 @@ public class GraphConverter {
         } else {
             id = (int) (Math.random() * 999999999) + "";
         }
-        obj.addProperty("id", id);
-        obj.addProperty("question", v.getProperty("question") == null ? "" : v.getProperty("question").toString());
+        obj.addProperty("_id", id);
+        obj.addProperty("name", v.getProperty("question") == null ? "" : v.getProperty("question").toString());
         obj.addProperty("details", v.getProperty("details") == null ? "" : v.getProperty("details").toString());
         if (v.getPropertyKeys().contains("imageURL")) {
         	JsonArray images = new JsonArray();
@@ -157,23 +168,23 @@ public class GraphConverter {
         		images.add(im);
         		res.add(im);
         	}
-            obj.add("image", images);
+            obj.add("images", images);
         } 
         /*else {
         	obj.add("image", JsonNull.INSTANCE);
         }
         */
         if (v.getPropertyKeys().contains("resources")) { //Attachments to add
-        	JsonArray attachments = new JsonArray();
+        	JsonArray resources = new JsonArray();
         	//Splitting by the semicolon
-        	for (String att: v.getProperty("resources").toString().split(";")) {
-        		att = att.trim();
-        		attachments.add(att);
-        		if (!att.endsWith(".json")) {
-        			res.add(att);
+        	for (String r: v.getProperty("resources").toString().split(";")) {
+        		r = r.trim();
+        		resources.add(r);
+        		if (!r.endsWith(".json")) {
+        			res.add(r);
         		}
         	}
-        	obj.add("attachment",attachments);
+        	obj.add("resources",resources);
         } 
         /* else {
         	obj.add("attachment", JsonNull.INSTANCE);
@@ -185,6 +196,20 @@ public class GraphConverter {
         return obj;
     }
     
+    //Using this method to convert to JsonObject edges
+    private static JsonObject edgeToJsonObject(Edge e, Map<Vertex, JsonObject> verts) {
+    	JsonObject obj = new JsonObject();
+    	String id = (int) (Math.random() * 999999999) + "";
+    	obj.addProperty("_id", id);
+    	obj.addProperty("_label", e.getLabel());
+    	//Get the associated JsonObjects for each vertex
+    	JsonObject up = verts.get(e.getVertex(Direction.OUT));
+        JsonObject down = verts.get(e.getVertex(Direction.IN));
+    	obj.addProperty("_outV", up.get("_id").getAsString());
+    	obj.addProperty("_inV", down.get("_id").getAsString());
+    	
+    	return obj;
+    }
     private static void setJsonObjectFromRepairNode(JsonObject orig, RepairNode r) {
     	//orig.addProperty("id", r.getId());
 		orig.addProperty("question", r.getQuestion());
