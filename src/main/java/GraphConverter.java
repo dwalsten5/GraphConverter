@@ -7,6 +7,7 @@ import com.tinkerpop.blueprints.Graph;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.tg.TinkerGraph;
 import com.tinkerpop.blueprints.util.io.graphml.GraphMLReader;
+import com.tinkerpop.blueprints.util.io.graphson.GraphSONWriter;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -39,6 +40,7 @@ public class GraphConverter {
         
     	for (String g: args) {
     		JsonArray all = new JsonArray(); //This will be the compiled array of JSON objects for each file
+    		JsonArray all_res = new JsonArray();
     		entry_pts.clear();
     		exit_pts.clear();
 	    	try {
@@ -60,10 +62,20 @@ public class GraphConverter {
 	            System.out.println("INVALID FILE");
 	            e.printStackTrace();
 	        }
-	
+	        
+	        //Test output as graph
+	        JsonObject toWrite = new JsonObject();
+	        JsonArray verts = new JsonArray();
+	        for (Vertex v : graph.getVertices()) {
+	        	//Have to use this dumb approach because blueprints doesn't work with Gson
+	        	verts.add(vertexToJsonObject(v,all_res));
+	        }
+	        toWrite.add("vertices",verts);
+	        toWrite.add("all_res", all_res);
+	        /*
 	        Map<Vertex, JsonObject> verts = new HashMap<Vertex, JsonObject>();
 	        for (Vertex v : graph.getVertices()) {
-	            verts.put(v, vertexToJsonObject(v));
+	            verts.put(v, vertexToJsonObject(v,resources));
 	        }
 	        for (Edge e : graph.getEdges()) {
 	            JsonObject up = verts.get(e.getVertex(Direction.OUT));
@@ -112,19 +124,21 @@ public class GraphConverter {
 	        for (Vertex v : verts.keySet()) {
 	            all.add(verts.get(v));
 	        }
-	
+			*/
 	        try {
 	            PrintWriter writer = new PrintWriter(new FileWriter(JSON_DIRECTORY + graph_file.replace(".graphml", ".json")));
-	            writer.print(gson.toJson(all));
+	           //writer.print(gson.toJson(all));
+	            writer.print(gson.toJson(toWrite));
 	            writer.flush();
 	            writer.close();
 	        } catch (IOException er) {
 	            er.printStackTrace();
 	        }
+	        
     	}
     }
 
-    private static JsonObject vertexToJsonObject(Vertex v) {
+    private static JsonObject vertexToJsonObject(Vertex v, JsonArray res) {
         JsonObject obj = new JsonObject();
         String id;
         if (v.getProperty("start") != null && ((Boolean) v.getProperty("start"))) {
@@ -141,6 +155,7 @@ public class GraphConverter {
         	for (String im: v.getProperty("imageURL").toString().split(";")) {
         		im = im.trim();
         		images.add(im);
+        		res.add(im);
         	}
             obj.add("image", images);
         } 
@@ -154,6 +169,9 @@ public class GraphConverter {
         	for (String att: v.getProperty("resources").toString().split(";")) {
         		att = att.trim();
         		attachments.add(att);
+        		if (!att.endsWith(".json")) {
+        			res.add(att);
+        		}
         	}
         	obj.add("attachment",attachments);
         } 
@@ -161,8 +179,9 @@ public class GraphConverter {
         	obj.add("attachment", JsonNull.INSTANCE);
         }
         */
-        obj.add("options", new JsonArray());
-        obj.add("next_question", new JsonArray());
+        //No longer need the options or next question fields
+        //obj.add("options", new JsonArray());
+        //obj.add("next_question", new JsonArray());
         return obj;
     }
     
@@ -211,7 +230,6 @@ public class GraphConverter {
     }
     
     private static void copyJsonObject(JsonObject toCopy, JsonObject dest) {
-
     	dest.add("question",toCopy.get("question"));
     	dest.add("details", toCopy.get("details"));
     	dest.remove("image");
