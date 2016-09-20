@@ -84,6 +84,7 @@ public class FlowChartSerializer implements JsonSerializer<FlowChart> {
         obj.addProperty("_id", id);
         obj.addProperty("name", v.getProperty("question") == null ? v.getProperty("name").toString() : v.getProperty("question").toString());
         obj.addProperty("details", v.getProperty("details") == null ? "" : v.getProperty("details").toString());
+        
         if (v.getPropertyKeys().contains("imageURL")) {
         	JsonArray images = new JsonArray();
         	//Splitting by the semicolon
@@ -93,7 +94,16 @@ public class FlowChartSerializer implements JsonSerializer<FlowChart> {
         		res.add(im);
         	}
             obj.add("images", images);
-        } 
+        } else if (v.getPropertyKeys().contains("images")) {
+        	JsonArray images = new JsonArray();
+        	//Splitting by the semicolon
+        	for (String im: v.getProperty("images").toString().split(";")) {
+        		im = im.trim();
+        		images.add(im);
+        		res.add(im);
+        	}
+            obj.add("images", images);
+        }
         /*else {
         	obj.add("image", JsonNull.INSTANCE);
         }
