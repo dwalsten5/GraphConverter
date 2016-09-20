@@ -257,10 +257,7 @@ public class GraphConverter {
 				
 				//Put the modified vertex in the entry pts. structure
 				
-			}
-			
-			//Check to see if this edge is on the way out
-			if(!next.getEdges(Direction.OUT).iterator().hasNext()) {
+			} else if(!next.getEdges(Direction.OUT).iterator().hasNext()) { //Check to see if this edge is on the way out
 				//Connect previous node with the reentry to the parent
 				Vertex outVertex;
 				if(parent.getVertex(prev.getId()) == null) {
@@ -281,9 +278,24 @@ public class GraphConverter {
 				} else {
 					exit_pts.get(name).add(outVertex);//Don't want to print this stuff to the file quite yet
 				}
+			} else {	//Ultimately, will need to add edges in the middle
+				Vertex outVertex = parent.getVertex(prev.getId());
+				Vertex inVertex = parent.getVertex(next.getId());
+				if(outVertex == null) {
+					outVertex = parent.addVertex(prev.getId());
+					copyVertex(prev,outVertex);
+				} 
+				
+				if(inVertex == null) {
+					inVertex = parent.addVertex(next.getId());
+					copyVertex(next,inVertex);
+				}
+				
+				Edge toAdd = parent.addEdge(random_id, outVertex, inVertex, curr.getLabel());
+				if(curr.getProperty("details") != null) {
+					toAdd.setProperty("details", curr.getProperty("details"));
+				}
 			}
-			
-			//Ultimately, will need to add in the 
 		}
 		return parent;
 		/*
