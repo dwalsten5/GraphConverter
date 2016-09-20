@@ -53,12 +53,13 @@ public class FlowChartSerializer implements JsonSerializer<FlowChart> {
         	verts.put(v, vertexToJsonObject(v,all_res));
         }
         //Now that we have the map, can iterate over the edges
-        for (Edge e : flowchart.getGraph().getEdges()) {
-        	edges.add(edgeToJsonObject(e,verts));
-        }
         for (Vertex v : verts.keySet()) {
         	vertices.add(verts.get(v));
         }
+        for (Edge e : flowchart.getGraph().getEdges()) {
+        	edges.add(edgeToJsonObject(e,verts));
+        }
+        
         //Now that I've parsed over the graph, I'll have the resources! What a concept!
 		jsonObject.add("all_res", all_res);
 		graph.add("vertices", vertices);
@@ -71,6 +72,9 @@ public class FlowChartSerializer implements JsonSerializer<FlowChart> {
 	//I need my helper methods from the old class in order to convert to JsonObjects
 	private static JsonObject vertexToJsonObject(Vertex v, JsonArray res) {
         JsonObject obj = new JsonObject();
+        //Need to separate vertices I made versus those made by old runs
+        
+        //NOT IMPLEMENTED - issues with crossover between types. Crossing fingers
         String id;
         if (v.getProperty("start") != null && ((Boolean) v.getProperty("start"))) {
             id = "q1";
@@ -78,7 +82,7 @@ public class FlowChartSerializer implements JsonSerializer<FlowChart> {
             id = (int) (Math.random() * 999999999) + "";
         }
         obj.addProperty("_id", id);
-        obj.addProperty("name", v.getProperty("question") == null ? "" : v.getProperty("question").toString());
+        obj.addProperty("name", v.getProperty("question") == null ? v.getProperty("name").toString() : v.getProperty("question").toString());
         obj.addProperty("details", v.getProperty("details") == null ? "" : v.getProperty("details").toString());
         if (v.getPropertyKeys().contains("imageURL")) {
         	JsonArray images = new JsonArray();
@@ -120,8 +124,19 @@ public class FlowChartSerializer implements JsonSerializer<FlowChart> {
     	JsonObject obj = new JsonObject();
     	String id = (int) (Math.random() * 999999999) + "";
     	obj.addProperty("_id", id);
-    	obj.addProperty("_label", e.getLabel());
+    	if (e.getProperty("option") != null) {
+    		obj.addProperty("_label", e.getProperty("option").toString());
+    	} else {
+    		obj.addProperty("_label", e.getLabel());
+    	}
+    	//System.out.println(obj.get("_id"));
+    	//System.out.println(obj.get("_label"));
     	//Get the associated JsonObjects for each vertex
+    	if (e.getVertex(Direction.OUT) == null) {
+    		System.out.println("No source vertex");
+    		
+    	}
+    	//System.out.println(e.getVertex(Direction.OUT).getProperty("name"));
     	JsonObject up = verts.get(e.getVertex(Direction.OUT));
         JsonObject down = verts.get(e.getVertex(Direction.IN));
     	obj.addProperty("_outV", up.get("_id").getAsString());
