@@ -3,7 +3,7 @@ package main.java.model;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Vertex {
+public class TCVertex {
 	//These are fields which are defined by the JSON files
 	private String _id;
 	private String name;
@@ -19,7 +19,7 @@ public class Vertex {
 	
 	//Default constructor, helps to initialize the fields which are not initialized directly with
 	//the deserializer
-	public Vertex() {
+	public TCVertex() {
 		outEdges = new ArrayList<String>();
 		inEdges = new ArrayList<String>();
 	}

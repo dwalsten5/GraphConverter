@@ -12,13 +12,13 @@ import com.google.gson.JsonSerializer;
 import main.java.VertexSerializer;
 
 import main.java.model.FlowChart;
-import main.java.model.Vertex;
+import main.java.model.TCVertex;
 
 //This class is needed in order to write this information, so let's get this shit going
 public class FlowChartSerializerMongo implements JsonSerializer<FlowChart> {
 
 	public JsonElement serialize(FlowChart flowchart, Type typeOfId, JsonSerializationContext context) {
-		Gson myGson = buildGson();
+		Gson myGson = new Gson();
 		final JsonObject jsonObject = new JsonObject();//This is the new object which will be written to the file
 		jsonObject.addProperty("_id", flowchart.getId());
 		jsonObject.addProperty("name", flowchart.getName());
@@ -65,11 +65,11 @@ public class FlowChartSerializerMongo implements JsonSerializer<FlowChart> {
 		JsonObject graph = new JsonObject();
 		JsonArray vertices = new JsonArray();
         //JsonArray edges = new JsonArray();
-        for (Vertex v : flowchart.getGraph().getVertices()) {
+        for (TCVertex v : flowchart.getGraph().getVertices()) {
         	for (String r : v.getResources()) {
         		all_res.add(r);
         	}
-        	vertices.add(myGson.toJson(v,Vertex.class));
+        	vertices.add(myGson.toJson(v));
         }
         //Now that I've parsed over the graph, I'll have the resources! What a concept!
 		jsonObject.add("all_res", all_res);
@@ -89,7 +89,7 @@ public class FlowChartSerializerMongo implements JsonSerializer<FlowChart> {
 	private static Gson buildGson() {
 		GsonBuilder gsonBuilder = new GsonBuilder();
 		
-		gsonBuilder.registerTypeAdapter(Vertex.class, new VertexSerializer());
+		gsonBuilder.registerTypeAdapter(TCVertex.class, new VertexSerializer());
 		Gson myGson = gsonBuilder.create();
 		
 		return myGson;

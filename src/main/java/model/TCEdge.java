@@ -1,6 +1,6 @@
 package main.java.model;
 
-public class Edge {
+public class TCEdge {
 	//Fields defined as Edge by our GraphSON
 	private String _id;
 	private String _label;

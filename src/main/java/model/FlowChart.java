@@ -14,7 +14,7 @@ public class FlowChart {
 	private String version;
 	private List<String> upvoted;
 	private List<String> downvoted;
-	private Graph graph; 
+	private TCGraph graph; 
 	private List<String> all_res;
 	private List<ChartComment> comments;
 	private String image;
@@ -94,11 +94,11 @@ public class FlowChart {
 	this.owner = owner;
 	}
 	
-	public Graph getGraph() {
+	public TCGraph getGraph() {
 	return graph;
 	}
 	
-	public void setGraph(Graph graph) {
+	public void setGraph(TCGraph graph) {
 		this.graph = graph;
 	}
 	

@@ -10,6 +10,10 @@ import com.tinkerpop.blueprints.util.io.graphml.GraphMLReader;
 import com.tinkerpop.blueprints.util.io.graphson.GraphSONWriter;
 
 import main.java.model.FlowChart;
+import main.java.model.TCGraph;
+import main.java.model.TCVertex;
+import main.java.model.FlowChart.ChartType;
+import main.java.model.TCEdge;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -23,7 +27,9 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,8 +40,7 @@ public class GraphConverter {
     static String JSON_DIRECTORY = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/";
     static String GRAPHML_DIRECTORY = "/Users/doranwalsten/Documents/CBID/TechConnect/yEd/Detailed_Maps/";
     static Gson gson = new GsonBuilder()
-    		.registerTypeAdapter(FlowChart.class, new FlowChartSerializer())
-    		.registerTypeAdapter(FlowChart.class, new FlowChartDeserializer())
+    		.registerTypeAdapter(FlowChart.class, new FlowChartSerializerMongo())
     		.setPrettyPrinting()
     		.disableHtmlEscaping()
     		.create(); 
@@ -58,7 +63,7 @@ public class GraphConverter {
 	        }
 	
 	        //Read in the GraphML file
-	        Graph graph = new TinkerGraph();
+	        TinkerGraph graph = new TinkerGraph();
 	        GraphMLReader reader = new GraphMLReader(graph);
 	        //Store any referenced charts for flowchart-ception
 	        
@@ -105,12 +110,20 @@ public class GraphConverter {
 	        }
 			
 			FlowChart test_flowchart = new FlowChart();
-	        test_flowchart.setId("Test String");
-	        test_flowchart.setName("Name of chart");
-	        test_flowchart.setDescription("This is the description");
-	        test_flowchart.setUpdatedDate("DATE HERE");
-	        test_flowchart.setVersion("VERSION 1.1");
-	        test_flowchart.setOwner("Doran Walsten");
+	        test_flowchart.setId(randomId());
+	        test_flowchart.setName("");
+	        test_flowchart.setDescription("");
+	        String date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date());
+	        test_flowchart.setCreatedDate(date);
+	        test_flowchart.setUpdatedDate(date);
+	        test_flowchart.setVersion("VERSION 1.0");
+	        test_flowchart.setOwner("TechConnect");
+	        test_flowchart.setType(ChartType.DEVICE);
+	        
+	        //Now, need to build proper graph from TinkerGraph
+	        ArrayList<TCVertex> nodes = new ArrayList<TCVertex>();
+	        ArrayList<TCEdge> edgs = new ArrayList<TCEdge>();
+	        
 	        test_flowchart.setGraph((TinkerGraph) graph);
 	        
 	        try {
@@ -191,7 +204,7 @@ public class GraphConverter {
 			Vertex next = curr.getVertex(Direction.IN);
 			
 			//For adding a new edge
-			String random_id = (int) (Math.random() * 999999999) + "";
+			String random_id = randomId();
 			//Check if source is the first ndoe
 			if (prev.getId().equals("q1")) {
 				//System.out.println("First node");
@@ -263,7 +276,7 @@ public class GraphConverter {
 		return parent;
 	}
     
-    private String randomId(){
+    private static String randomId(){
     	String validChars = "23456789ABCDEFGHJKLMNPQRSTWXYZabcdefghijkmnopqrstuvwxyz";
     	char chars[] = new char[17];
     	for(int i = 0; i < chars.length; i++){

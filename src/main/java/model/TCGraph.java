@@ -5,31 +5,31 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Graph {
+public class TCGraph {
 	
 	private String _id;
 	private String owner;
-	private Map<String,Vertex> nodes;
-	private Map<String, Edge> edges;
+	private Map<String,TCVertex> nodes;
+	private Map<String, TCEdge> edges;
 	private String firstNode;
 	
-	public Graph() {
+	public TCGraph() {
 		
 	}
 	
 	//Best constructor, actually builds all connections in the graph
-	public Graph(List<Vertex> V, List<Edge> E) {
-		nodes = new HashMap<String,Vertex>();
-		edges = new HashMap<String,Edge>();
+	public TCGraph(List<TCVertex> V, List<TCEdge> E) {
+		nodes = new HashMap<String,TCVertex>();
+		edges = new HashMap<String,TCEdge>();
 		
 		//Iterate over all vertices and add to the map
-		for (Vertex v : V) {
+		for (TCVertex v : V) {
 			nodes.put(v.getId(), v);
 		}
 		
 		//Iterate over the edges and add the edges to the respective in and out
 		//lists in the vertices
-		for (Edge e : E) {
+		for (TCEdge e : E) {
 			System.out.println(e.getId());
 			edges.put(e.getId(), e);
 			nodes.get(e.getOutV()).addOutEdge(e.getId());
@@ -61,24 +61,24 @@ public class Graph {
 		this.firstNode = firstNode;
 	}
 	
-	public Vertex getVertex(String id) {
+	public TCVertex getVertex(String id) {
 		return nodes.get(id);
 	}
 	
-	public Edge getEdge(String id) {
+	public TCEdge getEdge(String id) {
 		return edges.get(id);
 	}
 	
-	public List<Vertex> getVertices() {
-		ArrayList<Vertex> verts = new ArrayList<Vertex>();
+	public List<TCVertex> getVertices() {
+		ArrayList<TCVertex> verts = new ArrayList<TCVertex>();
 		for (String key : this.nodes.keySet()) {
 			verts.add(this.nodes.get(key));
 		}
 		return verts;
 	}
 	
-	public List<Edge> getEdges() {
-		ArrayList<Edge> edg = new ArrayList<Edge>();
+	public List<TCEdge> getEdges() {
+		ArrayList<TCEdge> edg = new ArrayList<TCEdge>();
 		for (String key : this.edges.keySet()) {
 			edg.add(this.edges.get(key));
 		}
@@ -86,8 +86,8 @@ public class Graph {
 	}
 	
 	//Remove given vertex as well as any associated edges in the graph
-	public Vertex removeVertex(String id) {
-		Vertex toRemove = nodes.remove(id);
+	public TCVertex removeVertex(String id) {
+		TCVertex toRemove = nodes.remove(id);
 		for (String key: toRemove.getOutEdges()) {
 			edges.remove(key);
 		}
@@ -95,7 +95,7 @@ public class Graph {
 	}
 	
 	//Remove given edge, but not the nodes on either side
-	public Edge removeEdge(String id) {
+	public TCEdge removeEdge(String id) {
 		return edges.remove(id);
 	}
 
