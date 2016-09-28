@@ -3,11 +3,36 @@ package main.java.model;
 
 public class ChartComment {
 
-
+	private String _id;
+	private String owner;
 	private String text;
+	private String createdDate;
 	private String attachment;
-	private String nodeId;
 	
+	
+	public String getId() {
+		return this._id;
+	}
+	
+	public void setId(String id) {
+		this._id = id;
+	}
+	
+	public String getOwner() {
+		return this.owner;
+	}
+	
+	public void setOwner(String owner) {
+		this.owner = owner;
+	}
+	
+	public String getCreatedDate() {
+		return this.createdDate;
+	}
+	
+	public void setCreatedDate(String createdDate) {
+		this.createdDate = createdDate;
+	}
 	/**
 	* 
 	* @return
@@ -44,21 +69,4 @@ public class ChartComment {
 	this.attachment = attachment;
 	}
 	
-	/**
-	* 
-	* @return
-	* The nodeId
-	*/
-	public String getNodeId() {
-	return nodeId;
-	}
-	
-	/**
-	* 
-	* @param nodeId
-	* The node_id
-	*/
-	public void setNodeId(String nodeId) {
-	this.nodeId = nodeId;
-	}
 }

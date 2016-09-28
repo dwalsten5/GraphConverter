@@ -262,6 +262,16 @@ public class GraphConverter {
 		}
 		return parent;
 	}
+    
+    private String randomId(){
+    	String validChars = "23456789ABCDEFGHJKLMNPQRSTWXYZabcdefghijkmnopqrstuvwxyz";
+    	char chars[] = new char[17];
+    	for(int i = 0; i < chars.length; i++){
+    		int rand = (int)(Math.random()*chars.length);
+    		chars[i] = validChars.charAt(rand);
+    	}
+    	return new String(chars);
+    }
 }
 
 
