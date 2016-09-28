@@ -3,7 +3,7 @@ package main.java.model;
 public class TCEdge {
 	//Fields defined as Edge by our GraphSON
 	private String _id;
-	private String _label;
+	private String name;
 	private String source; //source vertex
 	private String target; //target vertex
 	private String details;
@@ -17,11 +17,11 @@ public class TCEdge {
 	}
 	
 	public String getLabel() {
-		return this._label;
+		return this.name;
 	}
 	
 	public void setLabel(String label) {
-		this._label = label;
+		this.name = label;
 	}
 	
 	public String getOutV() {

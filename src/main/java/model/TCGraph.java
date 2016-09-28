@@ -57,7 +57,7 @@ public class TCGraph {
 		return this.firstNode;
 	}
 	
-	public void getFirstNode(String firstNode) {
+	public void setFirstNode(String firstNode) {
 		this.firstNode = firstNode;
 	}
 	

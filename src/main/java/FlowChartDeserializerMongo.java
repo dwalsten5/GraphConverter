@@ -27,7 +27,9 @@ public class FlowChartDeserializerMongo implements JsonDeserializer<FlowChart> {
 		final String id = jsonObject.get("_id").getAsString();
 		final String name = jsonObject.get("name").getAsString();
 		final String desc = jsonObject.get("description").getAsString();
-		final String crD = jsonObject.get("createdDate").getAsString();
+		if (jsonObject.has("createdDate")) {
+			final String crD = jsonObject.get("createdDate").getAsString();
+		}
 		final String upD = jsonObject.get("updatedDate").getAsString();
 		final String v = jsonObject.get("version").getAsString();
 		final String owner = jsonObject.get("owner").getAsString();
@@ -71,7 +73,7 @@ public class FlowChartDeserializerMongo implements JsonDeserializer<FlowChart> {
 		
 		//Here are the nullable fields
 		final JsonElement image = jsonObject.get("image");
-		if (image != JsonNull.INSTANCE) {
+		if (image != null) {
 			flowchart.setImage(image.getAsString());
 		} else {
 			flowchart.setImage(null);

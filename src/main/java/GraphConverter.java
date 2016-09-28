@@ -40,6 +40,7 @@ public class GraphConverter {
     static String JSON_DIRECTORY = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/";
     static String GRAPHML_DIRECTORY = "/Users/doranwalsten/Documents/CBID/TechConnect/yEd/Detailed_Maps/";
     static Gson gson = new GsonBuilder()
+    		.registerTypeAdapter(FlowChart.class, new FlowChartDeserializerMongo())
     		.registerTypeAdapter(FlowChart.class, new FlowChartSerializerMongo())
     		.setPrettyPrinting()
     		.disableHtmlEscaping()
@@ -125,7 +126,7 @@ public class GraphConverter {
 	        ArrayList<TCEdge> edgs = new ArrayList<TCEdge>();
 	        HashMap<Vertex,TCVertex> node_map = new HashMap<Vertex,TCVertex>();
 	        ArrayList<String> all_res = new ArrayList<String>();
-	        String firstNode;
+	        String firstNode = "";
 	        
 	        //Create all of the vertices to add, for preparation of joining with Edges
 	        for (Vertex v : graph.getVertices()) {
@@ -133,11 +134,13 @@ public class GraphConverter {
 	        	String id = randomId();
 	        	 if (v.getProperty("start") != null && ((Boolean) v.getProperty("start"))) {
 	                 firstNode = id;
+	                 
 	             } 
 	        	  
 	        	toAddV.setId(id);
-	        	toAddV.setName(v.getProperty("name").toString());
-	        	toAddV.setDetails(v.getProperty("details").toString());
+	        	System.out.println(v.getPropertyKeys());
+	        	toAddV.setName( v.getProperty("question") == null ? v.getProperty("name").toString().trim() : v.getProperty("question").toString().trim());
+	        	toAddV.setDetails(v.getProperty("details") == null ? "" : v.getProperty("details").toString().trim());
 	        	
 	        	//If images present, add to object
 	        	if (v.getPropertyKeys().contains("imageURL")) {
@@ -174,6 +177,7 @@ public class GraphConverter {
 	            	toAddV.setResources(resources);
 	            }
 	        	node_map.put(v, toAddV);
+	        	nodes.add(toAddV);
 	        }
 	        
 	        //Now, we gotta make all of the connections
@@ -194,15 +198,16 @@ public class GraphConverter {
 		    	TCVertex up = node_map.get(e.getVertex(Direction.OUT));
 		        TCVertex down = node_map.get(e.getVertex(Direction.IN));
 		    	toAddE.setOutV(up.getId());
-		    	up.addOutEdge(toAddE.getId());
-		    	toAddE.setInV(up.getId());
-		    	down.addInEdge(toAddE.getId());
+		    	//up.addOutEdge(toAddE.getId());
+		    	toAddE.setInV(down.getId());
+		    	//down.addInEdge(toAddE.getId());
 		    	edgs.add(toAddE);
 	        }
 	        
 	        TCGraph toAddG = new TCGraph(nodes,edgs);
 	        toAddG.setId(randomId());
 	        toAddG.setOwner("TechConnect");
+	        toAddG.setFirstNode(firstNode);
 	        test_flowchart.setGraph(toAddG);
 	        
 	        try {
