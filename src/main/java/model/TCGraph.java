@@ -61,6 +61,13 @@ public class TCGraph {
 		this.firstNode = firstNode;
 	}
 	
+	
+	//Also need to add them
+	public void addEdge(TCEdge e) {
+		this.edges.put(e.getId(), e);
+	}
+	
+	
 	public TCVertex getVertex(String id) {
 		return nodes.get(id);
 	}

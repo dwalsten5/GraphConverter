@@ -63,7 +63,7 @@ public class GraphConverter {
 	        }
 	
 	        //Read in the GraphML file
-	        TinkerGraph graph = new TinkerGraph();
+	        Graph graph = new TinkerGraph();
 	        GraphMLReader reader = new GraphMLReader(graph);
 	        //Store any referenced charts for flowchart-ception
 	        
@@ -123,8 +123,87 @@ public class GraphConverter {
 	        //Now, need to build proper graph from TinkerGraph
 	        ArrayList<TCVertex> nodes = new ArrayList<TCVertex>();
 	        ArrayList<TCEdge> edgs = new ArrayList<TCEdge>();
+	        HashMap<Vertex,TCVertex> node_map = new HashMap<Vertex,TCVertex>();
+	        ArrayList<String> all_res = new ArrayList<String>();
+	        String firstNode;
 	        
-	        test_flowchart.setGraph((TinkerGraph) graph);
+	        //Create all of the vertices to add, for preparation of joining with Edges
+	        for (Vertex v : graph.getVertices()) {
+	        	TCVertex toAddV = new TCVertex();
+	        	String id = randomId();
+	        	 if (v.getProperty("start") != null && ((Boolean) v.getProperty("start"))) {
+	                 firstNode = id;
+	             } 
+	        	  
+	        	toAddV.setId(id);
+	        	toAddV.setName(v.getProperty("name").toString());
+	        	toAddV.setDetails(v.getProperty("details").toString());
+	        	
+	        	//If images present, add to object
+	        	if (v.getPropertyKeys().contains("imageURL")) {
+	            	ArrayList<String> images = new ArrayList<String>();
+	            	//Splitting by the semicolon
+	            	for (String im: v.getProperty("imageURL").toString().split(";")) {
+	            		im = im.trim();
+	            		images.add(im);
+	            		all_res.add(im);
+	            	}
+	                toAddV.setImages(images);
+	            } else if (v.getPropertyKeys().contains("images")) {
+	            	ArrayList<String> images = new ArrayList<String>();
+	            	//Splitting by the semicolon
+	            	for (String im: v.getProperty("images").toString().split(";")) {
+	            		im = im.trim();
+	            		images.add(im);
+	            		all_res.add(im);
+	            	}
+	            	toAddV.setImages(images);
+	            }
+	        	
+	        	//If resources present, add to object
+	        	if (v.getPropertyKeys().contains("resources")) { //Attachments to add
+	            	ArrayList<String> resources = new ArrayList<String>();
+	            	//Splitting by the semicolon
+	            	for (String r: v.getProperty("resources").toString().split(";")) {
+	            		r = r.trim();
+	            		resources.add(r);
+	            		if (!r.endsWith(".json")) {
+	            			all_res.add(r);
+	            		}
+	            	}
+	            	toAddV.setResources(resources);
+	            }
+	        	node_map.put(v, toAddV);
+	        }
+	        
+	        //Now, we gotta make all of the connections
+	        for (Edge e : graph.getEdges()) {
+		        TCEdge toAddE = new TCEdge();
+		    	String id = randomId();
+		    	toAddE.setId(id);
+		    	if (e.getProperty("option") != null) {
+		    		toAddE.setLabel(e.getProperty("option").toString());
+		    	} else {
+		    		toAddE.setLabel(e.getLabel());
+		    	}
+		    	//Get the associated JsonObjects for each vertex
+		    	if (e.getVertex(Direction.OUT) == null) {
+		    		System.out.println("No source vertex");
+		    	}
+		    	//System.out.println(e.getVertex(Direction.OUT).getProperty("name"));
+		    	TCVertex up = node_map.get(e.getVertex(Direction.OUT));
+		        TCVertex down = node_map.get(e.getVertex(Direction.IN));
+		    	toAddE.setOutV(up.getId());
+		    	up.addOutEdge(toAddE.getId());
+		    	toAddE.setInV(up.getId());
+		    	down.addInEdge(toAddE.getId());
+		    	edgs.add(toAddE);
+	        }
+	        
+	        TCGraph toAddG = new TCGraph(nodes,edgs);
+	        toAddG.setId(randomId());
+	        toAddG.setOwner("TechConnect");
+	        test_flowchart.setGraph(toAddG);
 	        
 	        try {
 	            PrintWriter writer = new PrintWriter(new FileWriter(JSON_DIRECTORY + graph_file.replace(".graphml", ".json")));
@@ -139,6 +218,7 @@ public class GraphConverter {
     	}
     }
     
+    //This is for copying between blueprints Vertex objects
     private static void copyVertex(Vertex toCopy, Vertex dest) {
     	if (dest.getProperty("question") != null) {
     		dest.removeProperty("question");
@@ -149,14 +229,35 @@ public class GraphConverter {
 		dest.removeProperty("resources");
 		dest.removeProperty("options");
 		dest.removeProperty("next_question"); //Not removing next_question to have a label for the previous graph
-		//type 
+		//In this case, I think that we can directly copy the images and resources if they're there
 		if(toCopy.getProperty("images") != null) {
-			ArrayList<String> im_toCopy = toCopy.getProperty("images");
+			dest.setProperty("images", toCopy.getProperty("images").toString());
+		}
+		if(toCopy.getProperty("resources") != null) {
+			dest.setProperty("resources",toCopy.getProperty("resources") .toString());
+		}
+    	
+    }
+    
+    //This is for copying from a previously made Mongo vertex
+    private static void copyTCVertex(TCVertex toCopy, Vertex dest) {
+    	if (dest.getProperty("question") != null) {
+    		dest.removeProperty("question");
+    	}
+    	dest.setProperty("name",toCopy.getName());
+    	dest.setProperty("details",toCopy.getDetails());
+    	dest.removeProperty("imageURL");
+		dest.removeProperty("resources");
+		dest.removeProperty("options");
+		dest.removeProperty("next_question"); //Not removing next_question to have a label for the previous graph
+		//type 
+		if(toCopy.getImages() != null) {
+			List<String> im_toCopy = toCopy.getImages();
 			String images = String.join(";", im_toCopy);
 			dest.setProperty("images", images);
 		}
-		if(toCopy.getProperty("resources") != null) {
-			ArrayList<String> res_toCopy = toCopy.getProperty("resources");
+		if(toCopy.getResources() != null) {
+			List<String> res_toCopy = toCopy.getResources();
 			
 			/*ArrayList<String> res_new = new ArrayList<String>();
 			for (JsonElement s : res_toCopy) {
@@ -195,13 +296,14 @@ public class GraphConverter {
 		FlowChart child_flowchart = gson.fromJson(jsonReader, FlowChart.class);
 		
 		//This gets us our flow chart, now we just need to get the graph object
-		Graph g = child_flowchart.getGraph();
+		//Now, it's a TCGraph, which is a little different
+		TCGraph g = child_flowchart.getGraph();
 		
 		boolean start = false; //Has the first node been seen yet?
 		//Instead of iterating over Vertices, let's do edges
-		for (Edge curr : g.getEdges()) {
-			Vertex prev = curr.getVertex(Direction.OUT);
-			Vertex next = curr.getVertex(Direction.IN);
+		for (TCEdge curr : g.getEdges()) {
+			TCVertex prev = g.getVertex(curr.getOutV());
+			TCVertex next = g.getVertex(curr.getInV());
 			
 			//For adding a new edge
 			String random_id = randomId();
@@ -210,8 +312,8 @@ public class GraphConverter {
 				//System.out.println("First node");
 				if (!start) {
 					//If first time, need to reset the up node to look right
-					System.out.println(prev.getProperty("name"));
-					copyVertex(prev,up);
+					System.out.println(prev.getName());
+					copyTCVertex(prev,up);
 					entry_pts.put(name, up);
 					//Remove old edge?
 					
@@ -221,24 +323,24 @@ public class GraphConverter {
 				Vertex inVertex;
 				if (parent.getVertex(next.getId()) == null) {
 					inVertex = parent.addVertex(next.getId());
-					copyVertex(next,inVertex);
+					copyTCVertex(next,inVertex);
 				} else {
 					inVertex = parent.getVertex(next.getId());
 				}
 				Edge toAdd  = parent.addEdge(random_id, up, inVertex, curr.getLabel());
 				//If the current edge has some details, be sure to share
-				if (curr.getProperty("details") != null) {
-					toAdd.setProperty("details", curr.getProperty("details") );
+				if (curr.getDetails() != null) {
+					toAdd.setProperty("details", curr.getDetails() );
 				}
 				
 				//Put the modified vertex in the entry pts. structure
 				
-			} else if(!next.getEdges(Direction.OUT).iterator().hasNext()) { //Check to see if this edge is on the way out
+			} else if(next.getOutEdges() != null) { //Check to see if this edge is on the way out
 				//Connect previous node with the reentry to the parent
 				Vertex outVertex;
 				if(parent.getVertex(prev.getId()) == null) {
 					outVertex = parent.addVertex(prev.getId());
-					copyVertex(prev,outVertex);
+					copyTCVertex(prev,outVertex);
 				} else {
 					outVertex = parent.getVertex(prev.getId());
 				}
@@ -259,17 +361,17 @@ public class GraphConverter {
 				Vertex inVertex = parent.getVertex(next.getId());
 				if(outVertex == null) {
 					outVertex = parent.addVertex(prev.getId());
-					copyVertex(prev,outVertex);
+					copyTCVertex(prev,outVertex);
 				} 
 				
 				if(inVertex == null) {
 					inVertex = parent.addVertex(next.getId());
-					copyVertex(next,inVertex);
+					copyTCVertex(next,inVertex);
 				}
 				
 				Edge toAdd = parent.addEdge(random_id, outVertex, inVertex, curr.getLabel());
-				if(curr.getProperty("details") != null) {
-					toAdd.setProperty("details", curr.getProperty("details"));
+				if(curr.getDetails() != null) {
+					toAdd.setProperty("details", curr.getDetails());
 				}
 			}
 		}
