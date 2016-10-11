@@ -93,12 +93,22 @@ public class GraphConverter {
 		        		if (entry_pts.containsKey(name)) { // We have already seen this dude before
 		            		//Copy the head node to existing node in the chart
 		            		Vertex toCopy = entry_pts.get(name); //This needs to be a Vertex instead
-		            		copyVertex(toCopy,up);
+		            		copyVertex(toCopy,up); //Howver, this doesn't replace the existing edges
+		            		//Remove old edge
+		            		for (Edge old_edge: up.getEdges(Direction.OUT)) {
+		            			graph.removeEdge(old_edge);
+		            		}
+		            		for (Edge new_edge : toCopy.getEdges(Direction.OUT)) {
+		            			//Want to copy the edges over, but with new ID
+		            			String random_id = randomId();
+		            			graph.addEdge(random_id, up, new_edge.getVertex(Direction.IN), new_edge.getLabel());
+		            		}
 		            		//Go to the end of the referenced chart and add the new next question option to the end
 		            		for (Vertex exit_pt : exit_pts.get(name)) {
 		            			//Check to see if this actually sets the new entry in the objectf
 		            			//HERE WE JUST MAKE A NEW FREAKING EDGE. WHAT A CONCEPT!
-		            			Edge temp = exit_pt.addEdge(context, down);
+		            			String random_id = randomId();
+		            			graph.addEdge(random_id,exit_pt,down,context);
 		            		}
 		            		
 		            	} else {
