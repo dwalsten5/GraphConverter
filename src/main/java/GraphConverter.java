@@ -38,7 +38,8 @@ import static java.nio.file.StandardCopyOption.*;
 public class GraphConverter {
     static String graph_file;
     static String JSON_DIRECTORY = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/";
-    static String GRAPHML_DIRECTORY = "/Users/doranwalsten/Documents/CBID/TechConnect/yEd/Detailed_Maps/";
+    static String GRAPHML_DIRECTORY = "/Users/doranwalsten/Documents/CBID/TechConnect/yEd/Detailed_Maps/"; 
+    
     static Gson gson = new GsonBuilder()
     		.registerTypeAdapter(FlowChart.class, new FlowChartDeserializerMongo())
     		.registerTypeAdapter(FlowChart.class, new FlowChartSerializerMongo())
@@ -101,7 +102,6 @@ public class GraphConverter {
 		            		}
 		            		
 		            	} else {
-		            		
 		            		graph = writeReferencedChartToFile(graph, name, context, up, e, down);
 		            	}
 		            } else {
@@ -125,7 +125,6 @@ public class GraphConverter {
 	        ArrayList<TCVertex> nodes = new ArrayList<TCVertex>();
 	        ArrayList<TCEdge> edgs = new ArrayList<TCEdge>();
 	        HashMap<Vertex,TCVertex> node_map = new HashMap<Vertex,TCVertex>();
-	        ArrayList<String> all_res = new ArrayList<String>();
 	        String firstNode = "";
 	        
 	        //Create all of the vertices to add, for preparation of joining with Edges
@@ -149,7 +148,6 @@ public class GraphConverter {
 	            	for (String im: v.getProperty("imageURL").toString().split(";")) {
 	            		im = im.trim();
 	            		images.add(im);
-	            		all_res.add(im);
 	            	}
 	                toAddV.setImages(images);
 	            } else if (v.getPropertyKeys().contains("images")) {
@@ -158,7 +156,6 @@ public class GraphConverter {
 	            	for (String im: v.getProperty("images").toString().split(";")) {
 	            		im = im.trim();
 	            		images.add(im);
-	            		all_res.add(im);
 	            	}
 	            	toAddV.setImages(images);
 	            }
@@ -168,10 +165,9 @@ public class GraphConverter {
 	            	ArrayList<String> resources = new ArrayList<String>();
 	            	//Splitting by the semicolon
 	            	for (String r: v.getProperty("resources").toString().split(";")) {
-	            		r = r.trim();
-	            		resources.add(r);
 	            		if (!r.endsWith(".json")) {
-	            			all_res.add(r);
+		            		r = r.trim();
+		            		resources.add(r);
 	            		}
 	            	}
 	            	toAddV.setResources(resources);
@@ -186,8 +182,10 @@ public class GraphConverter {
 		    	String id = randomId();
 		    	toAddE.setId(id);
 		    	if (e.getProperty("option") != null) {
+		    		//System.out.println(e.getProperty("option").toString());
 		    		toAddE.setLabel(e.getProperty("option").toString());
 		    	} else {
+		    		//System.out.println(e.getLabel());
 		    		toAddE.setLabel(e.getLabel());
 		    	}
 		    	//Get the associated JsonObjects for each vertex
@@ -306,14 +304,17 @@ public class GraphConverter {
 		
 		boolean start = false; //Has the first node been seen yet?
 		//Instead of iterating over Vertices, let's do edges
+		System.out.println(g.getFirstNode() + "IS FIRST NODE");
 		for (TCEdge curr : g.getEdges()) {
 			TCVertex prev = g.getVertex(curr.getOutV());
 			TCVertex next = g.getVertex(curr.getInV());
-			
 			//For adding a new edge
 			String random_id = randomId();
-			//Check if source is the first ndoe
-			if (prev.getId().equals("q1")) {
+			//Check if source is the first node
+			//Must use the new structure in order to catch the first node
+			
+			if (prev.getId().equalsIgnoreCase(g.getFirstNode())) {
+				System.out.println("FOUND THE START");
 				//System.out.println("First node");
 				if (!start) {
 					//If first time, need to reset the up node to look right
@@ -340,7 +341,8 @@ public class GraphConverter {
 				
 				//Put the modified vertex in the entry pts. structure
 				
-			} else if(next.getOutEdges() != null) { //Check to see if this edge is on the way out
+			} else if (next.getOutEdges().isEmpty()) { //Check to see if this edge is on the way out
+				System.out.println("FOUND THE END");
 				//Connect previous node with the reentry to the parent
 				Vertex outVertex;
 				if(parent.getVertex(prev.getId()) == null) {
@@ -380,6 +382,7 @@ public class GraphConverter {
 				}
 			}
 		}
+		parent.removeEdge(e);
 		return parent;
 	}
     

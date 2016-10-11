@@ -91,6 +91,11 @@ public class FlowChartDeserializerMongo implements JsonDeserializer<FlowChart> {
 		final TCGraph g;
 		if (jsonObject.has("graph")) {
 			JsonObject temp_graph = jsonObject.get("graph").getAsJsonObject();
+			//First, need to set the fields relevant to the graph
+			final String first = temp_graph.get("firstNode").getAsString();
+			final String own  = temp_graph.get("owner").getAsString();
+			final String _id = temp_graph.get("_id").getAsString();
+			
 			//This object should have 2 properties, vertices and edges
 			JsonArray vertices = temp_graph.get("nodes").getAsJsonArray();//NODES!
 			JsonArray edges = temp_graph.get("edges").getAsJsonArray();
@@ -104,6 +109,9 @@ public class FlowChartDeserializerMongo implements JsonDeserializer<FlowChart> {
 			}
 			
 			g = new TCGraph(verts,edg);
+			g.setFirstNode(first);
+			g.setOwner(own);
+			g.setId(id);
 			flowchart.setGraph(g);
 		}
 	

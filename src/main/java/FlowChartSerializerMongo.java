@@ -17,6 +17,9 @@ import main.java.model.TCVertex;
 //This class is needed in order to write this information, so let's get this shit going
 public class FlowChartSerializerMongo implements JsonSerializer<FlowChart> {
 
+	//URL of the S3 repo, specifically the resources folder with all of the pictures and the like.
+    static String S3_URL = "http://tech-connect-database.s3-website-us-west-2.amazonaws.com/resources/";
+    
 	public JsonElement serialize(FlowChart flowchart, Type typeOfId, JsonSerializationContext context) {
 		Gson myGson = buildGson();
 		final JsonObject jsonObject = new JsonObject();//This is the new object which will be written to the file
@@ -69,12 +72,14 @@ public class FlowChartSerializerMongo implements JsonSerializer<FlowChart> {
         	if (v.getResources() != null) {
 	        	for (String r : v.getResources()) {
 	        		if (!r.endsWith("json")) {
-	        			all_res.add(r);
+	        			//Here, want to add the URL of the Amazon S3 repo
+	        			all_res.add(S3_URL + r);
 	        		}
 	        	}
         	} else if (v.getImages() != null) {
         		for(String i: v.getImages()) {
-        			all_res.add(i);
+        			//Here, want to add the URL of the Amazon S3 repo
+        			all_res.add(S3_URL + i);
         		}
         	}
         	vertices.add(myGson.toJsonTree(v,TCVertex.class));
