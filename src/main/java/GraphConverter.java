@@ -160,7 +160,10 @@ public class GraphConverter {
 	            	for (String im: v.getProperty("imageURL").toString().split(";")) {
 	            		im = im.trim();
 	            		//Here, need to add the S3 URL
-	            		images.add(S3_URL + im);
+	            		if (!im.startsWith("http")) {
+	            			im = S3_URL + im;
+	            		}
+	            		images.add(im);
 	            	}
 	                toAddV.setImages(images);
 	            } else if (v.getPropertyKeys().contains("images")) {
@@ -168,8 +171,11 @@ public class GraphConverter {
 	            	//Splitting by the semicolon
 	            	for (String im: v.getProperty("images").toString().split(";")) {
 	            		im = im.trim();
-	            		//Here, need to add the S3 URL 
-	            		images.add(S3_URL + im);
+	            		//Here, need to add the S3 URL
+	            		if(!im.startsWith("http")) {
+	            			im = S3_URL + im;
+	            		}
+	            		images.add(im);
 	            	}
 	            	toAddV.setImages(images);
 	            }
@@ -182,7 +188,10 @@ public class GraphConverter {
 	            		if (!r.endsWith(".json")) {
 		            		r = r.trim();
 		            		//Here, need to add the S3 URL
-		            		resources.add(S3_URL + r);
+		            		if(!r.startsWith("http")) {
+		            			r = S3_URL + r;
+		            		}
+		            		resources.add(r);
 	            		}
 	            	}
 	            	toAddV.setResources(resources);
