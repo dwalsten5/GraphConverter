@@ -39,6 +39,8 @@ public class GraphConverter {
     static String graph_file;
     static String JSON_DIRECTORY = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/";
     static String GRAPHML_DIRECTORY = "/Users/doranwalsten/Documents/CBID/TechConnect/yEd/Detailed_Maps/"; 
+    //URL of the S3 repo, specifically the resources folder with all of the pictures and the like.
+    static String S3_URL = "http://tech-connect-database.s3-website-us-west-2.amazonaws.com/resources/";
     
     static Gson gson = new GsonBuilder()
     		.registerTypeAdapter(FlowChart.class, new FlowChartDeserializerMongo())
@@ -157,7 +159,8 @@ public class GraphConverter {
 	            	//Splitting by the semicolon
 	            	for (String im: v.getProperty("imageURL").toString().split(";")) {
 	            		im = im.trim();
-	            		images.add(im);
+	            		//Here, need to add the S3 URL
+	            		images.add(S3_URL + im);
 	            	}
 	                toAddV.setImages(images);
 	            } else if (v.getPropertyKeys().contains("images")) {
@@ -165,7 +168,8 @@ public class GraphConverter {
 	            	//Splitting by the semicolon
 	            	for (String im: v.getProperty("images").toString().split(";")) {
 	            		im = im.trim();
-	            		images.add(im);
+	            		//Here, need to add the S3 URL 
+	            		images.add(S3_URL + im);
 	            	}
 	            	toAddV.setImages(images);
 	            }
@@ -177,7 +181,8 @@ public class GraphConverter {
 	            	for (String r: v.getProperty("resources").toString().split(";")) {
 	            		if (!r.endsWith(".json")) {
 		            		r = r.trim();
-		            		resources.add(r);
+		            		//Here, need to add the S3 URL
+		            		resources.add(S3_URL + r);
 	            		}
 	            	}
 	            	toAddV.setResources(resources);

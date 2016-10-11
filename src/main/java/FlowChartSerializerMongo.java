@@ -17,8 +17,6 @@ import main.java.model.TCVertex;
 //This class is needed in order to write this information, so let's get this shit going
 public class FlowChartSerializerMongo implements JsonSerializer<FlowChart> {
 
-	//URL of the S3 repo, specifically the resources folder with all of the pictures and the like.
-    static String S3_URL = "http://tech-connect-database.s3-website-us-west-2.amazonaws.com/resources/";
     
 	public JsonElement serialize(FlowChart flowchart, Type typeOfId, JsonSerializationContext context) {
 		Gson myGson = buildGson();
@@ -57,8 +55,6 @@ public class FlowChartSerializerMongo implements JsonSerializer<FlowChart> {
 		jsonObject.add("downvoted", downvoted);	
 		
 		//Now, we get to have fun with the other objects
-		//Resources
-		final JsonArray all_res = new JsonArray();
 		
 		//Comments, will set null for now as no comments possible
 		final JsonArray comments = new JsonArray();
@@ -67,34 +63,17 @@ public class FlowChartSerializerMongo implements JsonSerializer<FlowChart> {
 		//Now, we have to convert the Graph, which is beautiful
 		JsonObject graph = new JsonObject();
 		JsonArray vertices = new JsonArray();
-        //JsonArray edges = new JsonArray();
+		//Use Vertex Serializer to do it right
         for (TCVertex v : flowchart.getGraph().getVertices()) {
-        	if (v.getResources() != null) {
-	        	for (String r : v.getResources()) {
-	        		if (!r.endsWith("json")) {
-	        			//Here, want to add the URL of the Amazon S3 repo
-	        			all_res.add(S3_URL + r);
-	        		}
-	        	}
-        	} else if (v.getImages() != null) {
-        		for(String i: v.getImages()) {
-        			//Here, want to add the URL of the Amazon S3 repo
-        			all_res.add(S3_URL + i);
-        		}
-        	}
         	vertices.add(myGson.toJsonTree(v,TCVertex.class));
         }
-        //Now that I've parsed over the graph, I'll have the resources! What a concept!
-		jsonObject.add("all_res", all_res);
         graph.addProperty("_id",flowchart.getGraph().getId());
         graph.addProperty("owner", flowchart.getGraph().getOwner());
         graph.addProperty("firstNode", flowchart.getGraph().getFirstNode());
         graph.add("nodes", myGson.toJsonTree(vertices));//Must be nodes for the Mongo dude
         graph.add("edges", myGson.toJsonTree(flowchart.getGraph().getEdges())); //Trying a more direct call
         jsonObject.add("graph", graph);
-        
-        //Now that I've parsed over the graph, I'll have the resources! What a concept!
-		jsonObject.add("all_res", all_res);
+       
 		
 		return jsonObject;
 	}

@@ -15,7 +15,6 @@ public class FlowChart {
 	private List<String> upvoted;
 	private List<String> downvoted;
 	private TCGraph graph; 
-	private List<String> all_res;
 	private List<ChartComment> comments;
 	private String image;
 	private List<String> resources;
@@ -102,13 +101,6 @@ public class FlowChart {
 		this.graph = graph;
 	}
 	
-	public List<String> getAllRes() {
-		return this.all_res;
-	}
-	
-	public void setAllRes(List<String> ar) {
-		this.all_res = ar;
-	}
 	
 	public List<ChartComment> getComments() {
 		return this.comments;

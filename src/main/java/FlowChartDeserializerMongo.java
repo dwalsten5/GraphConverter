@@ -37,9 +37,6 @@ public class FlowChartDeserializerMongo implements JsonDeserializer<FlowChart> {
 		//Now, getting the resources and comments fields
 		final ArrayList<String> all_res = new ArrayList<String>();
 		final ArrayList<ChartComment> comments = new ArrayList<ChartComment>();
-		for (JsonElement j : jsonObject.get("all_res").getAsJsonArray()) {
-			all_res.add(j.getAsString());
-		}
 		for (JsonElement j : jsonObject.get("comments").getAsJsonArray()) {
 			comments.add(gson.fromJson(j,ChartComment.class));
 		}
@@ -67,7 +64,6 @@ public class FlowChartDeserializerMongo implements JsonDeserializer<FlowChart> {
 		flowchart.setUpdatedDate(upD);
 		flowchart.setVersion(v);
 		flowchart.setOwner(owner);
-		flowchart.setAllRes(all_res);
 		flowchart.setComments(comments);
 		flowchart.setType(type);
 		
