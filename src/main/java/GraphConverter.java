@@ -29,6 +29,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -38,7 +39,8 @@ import static java.nio.file.StandardCopyOption.*;
 public class GraphConverter {
     static String graph_file;
     static String JSON_DIRECTORY = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/";
-    static String GRAPHML_DIRECTORY = "/Users/doranwalsten/Documents/CBID/TechConnect/yEd/Detailed_Maps/"; 
+    static String GRAPHML_DIRECTORY = "/Users/doranwalsten/Documents/CBID/TechConnect/yEd/Detailed_Maps/";
+    static ArrayList<String> LIBRARY = new ArrayList<String>(Arrays.asList("97B52EA53H39GDHFB","557E4HFF36CCD2H9C","AG48FFB9624DJE232","BC57D8B3259BD27FA")); //Store all existing graph Ids
     //URL of the S3 repo, specifically the resources folder with all of the pictures and the like.
     static String S3_URL = "http://tech-connect-database.s3-website-us-west-2.amazonaws.com/resources/";
     
@@ -85,21 +87,38 @@ public class GraphConverter {
 	        for (Edge e: graph.getEdges() ) {
 	        	Vertex up = e.getVertex(Direction.OUT);
 	        	Vertex down = e.getVertex(Direction.IN);
-	        	
 	        	if (up.getProperty("resources") != null) {
 	        		String name = up.getProperty("resources").toString().trim();
 	        		String context; 
-		        	if (name.endsWith("json")) {
+		        	if (LIBRARY.contains(name)) { 
 		        		context = up.getProperty("details").toString().trim();
 		        		System.out.println(name);
 		        		if (entry_pts.containsKey(name)) { // We have already seen this dude before
-		            		//Copy the head node to existing node in the chart
-		            		Vertex toCopy = entry_pts.get(name); //This needs to be a Vertex instead
-		            		copyVertex(toCopy,up); //Howver, this doesn't replace the existing edges
-		            		//Remove old edge
-		            		for (Edge old_edge: up.getEdges(Direction.OUT)) {
+		        			//Copy the head node to existing node in the chart
+		            		Vertex ref = entry_pts.get(name); //This needs to be a Vertex instead
+		            		
+		            		//For existing edges, need to make sure that the label is the context
+		            		for (Edge curr_edge : ref.getEdges(Direction.OUT)) {
+		            			graph.addEdge(randomId(), ref, curr_edge.getVertex(Direction.IN), ref.getProperty("details").toString().trim());
+		            			graph.removeEdge(curr_edge);
+		            		}
+		            		//Remove old edges coming in, but add a new edge to the reference point
+		            		for(Edge old_edge : up.getEdges(Direction.IN)) {
+		            			Vertex source = old_edge.getVertex(Direction.OUT);
+		            			String random_id = randomId();
+		            			graph.addEdge(random_id,source,ref,old_edge.getProperty("option").toString());
 		            			graph.removeEdge(old_edge);
 		            		}
+		            		//Remove old edges coming out, add a new edge from ref to the next edge
+		            		for (Edge old_edge: up.getEdges(Direction.OUT)) {
+		            			Vertex target = old_edge.getVertex(Direction.IN);
+		            			String random_id = randomId();
+		            			graph.addEdge(random_id, ref, target, context);
+		            			graph.removeEdge(old_edge);
+		            		}
+		            		
+		            		
+		            		/*
 		            		for (Edge new_edge : toCopy.getEdges(Direction.OUT)) {
 		            			//Want to copy the edges over, but with new ID
 		            			String random_id = randomId();
@@ -112,9 +131,11 @@ public class GraphConverter {
 		            			String random_id = randomId();
 		            			graph.addEdge(random_id,exit_pt,down,context);
 		            		}
-		            		
+		            		*/
+		            		graph.removeVertex(up);
 		            	} else {
-		            		graph = writeReferencedChartToFile(graph, name, context, up, e, down);
+		            		entry_pts.put(name,up);
+		            		//graph = writeReferencedChartToFile(graph, name, context, up, e, down);
 		            	}
 		            } else {
 		            	System.out.println("FAIL");
@@ -141,61 +162,70 @@ public class GraphConverter {
 	        
 	        //Create all of the vertices to add, for preparation of joining with Edges
 	        for (Vertex v : graph.getVertices()) {
+	        	boolean isVirtual = false;
 	        	TCVertex toAddV = new TCVertex();
 	        	String id = randomId();
 	        	 if (v.getProperty("start") != null && ((Boolean) v.getProperty("start"))) {
 	                 firstNode = id;
-	                 
 	             } 
+	        	 
+	        	//If resources present, add to object
+	        	if (v.getPropertyKeys().contains("resources")) { //Attachments to add, maybe even virtual graph
+	        		String name = v.getProperty("resources").toString().trim();
+	        		if (LIBRARY.contains(name)) { //This is a virtual graph
+	        			toAddV.setGraphId(name);
+	        			isVirtual = true;
+	        		} else {
+		            	ArrayList<String> resources = new ArrayList<String>();
+		            	//Splitting by the semicolon
+		            	for (String r: v.getProperty("resources").toString().split(";")) {
+		            		if (!r.endsWith(".json")) {
+			            		r = r.trim();
+			            		//Here, need to add the S3 URL
+			            		if(!r.startsWith("http")) {
+			            			r = S3_URL + r;
+			            		}
+			            		resources.add(r);
+		            		}
+		            	}
+		            	toAddV.setResources(resources);
+	        		}
+	            } 
 	        	  
 	        	toAddV.setId(id);
-	        	System.out.println(v.getPropertyKeys());
-	        	toAddV.setName( v.getProperty("question") == null ? v.getProperty("name").toString().trim() : v.getProperty("question").toString().trim());
-	        	toAddV.setDetails(v.getProperty("details") == null ? "" : v.getProperty("details").toString().trim());
-	        	
-	        	//If images present, add to object
-	        	if (v.getPropertyKeys().contains("imageURL")) {
-	            	ArrayList<String> images = new ArrayList<String>();
-	            	//Splitting by the semicolon
-	            	for (String im: v.getProperty("imageURL").toString().split(";")) {
-	            		im = im.trim();
-	            		//Here, need to add the S3 URL
-	            		if (!im.startsWith("http")) {
-	            			im = S3_URL + im;
-	            		}
-	            		images.add(im);
-	             	}
-	                toAddV.setImages(images);
-	            } else if (v.getPropertyKeys().contains("images")) {
-	            	ArrayList<String> images = new ArrayList<String>();
-	            	//Splitting by the semicolon
-	            	for (String im: v.getProperty("images").toString().split(";")) {
-	            		im = im.trim();
-	            		//Here, need to add the S3 URL
-	            		if(!im.startsWith("http")) {
-	            			im = S3_URL + im;
-	            		}
-	            		images.add(im);
-	            	}
-	            	toAddV.setImages(images);
-	            }
-	        	
-	        	//If resources present, add to object
-	        	if (v.getPropertyKeys().contains("resources")) { //Attachments to add
-	            	ArrayList<String> resources = new ArrayList<String>();
-	            	//Splitting by the semicolon
-	            	for (String r: v.getProperty("resources").toString().split(";")) {
-	            		if (!r.endsWith(".json")) {
-		            		r = r.trim();
+	        	if (!isVirtual) {
+		        	System.out.println(v.getPropertyKeys());
+		        	toAddV.setName( v.getProperty("question") == null ? v.getProperty("name").toString().trim() : v.getProperty("question").toString().trim());
+		        	toAddV.setDetails(v.getProperty("details") == null ? "" : v.getProperty("details").toString().trim());
+		        	
+		        	//If images present, add to object
+		        	if (v.getPropertyKeys().contains("imageURL")) {
+		            	ArrayList<String> images = new ArrayList<String>();
+		            	//Splitting by the semicolon
+		            	for (String im: v.getProperty("imageURL").toString().split(";")) {
+		            		im = im.trim();
 		            		//Here, need to add the S3 URL
-		            		if(!r.startsWith("http")) {
-		            			r = S3_URL + r;
+		            		if (!im.startsWith("http")) {
+		            			im = S3_URL + im;
 		            		}
-		            		resources.add(r);
-	            		}
-	            	}
-	            	toAddV.setResources(resources);
-	            }
+		            		images.add(im);
+		             	}
+		                toAddV.setImages(images);
+		            } else if (v.getPropertyKeys().contains("images")) {
+		            	ArrayList<String> images = new ArrayList<String>();
+		            	//Splitting by the semicolon
+		            	for (String im: v.getProperty("images").toString().split(";")) {
+		            		im = im.trim();
+		            		//Here, need to add the S3 URL
+		            		if(!im.startsWith("http")) {
+		            			im = S3_URL + im;
+		            		}
+		            		images.add(im);
+		            	}
+		            	toAddV.setImages(images);
+		            }
+	        	}
+	        	
 	        	node_map.put(v, toAddV);
 	        	nodes.add(toAddV);
 	        }
@@ -244,171 +274,6 @@ public class GraphConverter {
 	        
     	}
     }
-    
-    //This is for copying between blueprints Vertex objects
-    private static void copyVertex(Vertex toCopy, Vertex dest) {
-    	if (dest.getProperty("question") != null) {
-    		dest.removeProperty("question");
-    	}
-    	dest.setProperty("name",toCopy.getProperty("name"));
-    	dest.setProperty("details",toCopy.getProperty("details"));
-    	dest.removeProperty("imageURL");
-		dest.removeProperty("resources");
-		dest.removeProperty("options");
-		dest.removeProperty("next_question"); //Not removing next_question to have a label for the previous graph
-		//In this case, I think that we can directly copy the images and resources if they're there
-		if(toCopy.getProperty("images") != null) {
-			dest.setProperty("images", toCopy.getProperty("images").toString());
-		}
-		if(toCopy.getProperty("resources") != null) {
-			dest.setProperty("resources",toCopy.getProperty("resources") .toString());
-		}
-    	
-    }
-    
-    //This is for copying from a previously made Mongo vertex
-    private static void copyTCVertex(TCVertex toCopy, Vertex dest) {
-    	if (dest.getProperty("question") != null) {
-    		dest.removeProperty("question");
-    	}
-    	dest.setProperty("name",toCopy.getName());
-    	dest.setProperty("details",toCopy.getDetails());
-    	dest.removeProperty("imageURL");
-		dest.removeProperty("resources");
-		dest.removeProperty("options");
-		dest.removeProperty("next_question"); //Not removing next_question to have a label for the previous graph
-		//type 
-		if(toCopy.getImages() != null) {
-			List<String> im_toCopy = toCopy.getImages();
-			String images = String.join(";", im_toCopy);
-			dest.setProperty("images", images);
-		}
-		if(toCopy.getResources() != null) {
-			List<String> res_toCopy = toCopy.getResources();
-			
-			/*ArrayList<String> res_new = new ArrayList<String>();
-			for (JsonElement s : res_toCopy) {
-				res_new.add(s.toString());
-			}*/
-			String resources = String.join(";", res_toCopy);
-			dest.setProperty("resources", resources);
-		}
-    	
-    }
-    
-    /**
-     * This is a function which is called whenever a referenced flowchart is inserted into the existing chart
-     * @param name - Name of the json file referenced. Used as the key in the maps which store all of the referenced charts
-     * @param context - The context in which the referenced chart is called. Used to generate the options at end
-     * @param up - Vertex which referenced the chart
-     * @param e - edge between that vertex and next vertex in original chart
-     * @param down - Next vertex in original chart
-     * @throws IOException
-     */
-    private static Graph writeReferencedChartToFile(Graph parent, String name, String context, Vertex up, Edge e, Vertex down ) throws IOException{
-    	//FileWriter jsonWriter = new FileWriter(JSON_DIRECTORY + graph_file.replaceAll(".graphml", ".json"));
-    	JsonReader jsonReader = new JsonReader(new FileReader(JSON_DIRECTORY + name));
-    	
-    	//Clear out old edges
-    	/*
-    	for (Edge ed: up.getEdges(Direction.OUT)) {
-			parent.removeEdge(ed);
-		}
-    	//Need to clear out old edges 
-    	for (Edge ed : down.getEdges(Direction.IN)) {
-			parent.removeEdge(ed);
-		}
-		*/
-    	//In theory, this should be a new FlowChart in json form
-		FlowChart child_flowchart = gson.fromJson(jsonReader, FlowChart.class);
-		
-		//This gets us our flow chart, now we just need to get the graph object
-		//Now, it's a TCGraph, which is a little different
-		TCGraph g = child_flowchart.getGraph();
-		
-		boolean start = false; //Has the first node been seen yet?
-		//Instead of iterating over Vertices, let's do edges
-		System.out.println(g.getFirstNode() + "IS FIRST NODE");
-		for (TCEdge curr : g.getEdges()) {
-			TCVertex prev = g.getVertex(curr.getOutV());
-			TCVertex next = g.getVertex(curr.getInV());
-			//For adding a new edge
-			String random_id = randomId();
-			//Check if source is the first node
-			//Must use the new structure in order to catch the first node
-			
-			if (prev.getId().equalsIgnoreCase(g.getFirstNode())) {
-				System.out.println("FOUND THE START");
-				//System.out.println("First node");
-				if (!start) {
-					//If first time, need to reset the up node to look right
-					System.out.println(prev.getName());
-					copyTCVertex(prev,up);
-					entry_pts.put(name, up);
-					//Remove old edge?
-					
-				}
-				
-				//Only add the next vertex if it has not been added yet
-				Vertex inVertex;
-				if (parent.getVertex(next.getId()) == null) {
-					inVertex = parent.addVertex(next.getId());
-					copyTCVertex(next,inVertex);
-				} else {
-					inVertex = parent.getVertex(next.getId());
-				}
-				Edge toAdd  = parent.addEdge(random_id, up, inVertex, curr.getLabel());
-				//If the current edge has some details, be sure to share
-				if (curr.getDetails() != null) {
-					toAdd.setProperty("details", curr.getDetails() );
-				}
-				
-				//Put the modified vertex in the entry pts. structure
-				
-			} else if (next.getOutEdges().isEmpty()) { //Check to see if this edge is on the way out
-				System.out.println("FOUND THE END");
-				//Connect previous node with the reentry to the parent
-				Vertex outVertex;
-				if(parent.getVertex(prev.getId()) == null) {
-					outVertex = parent.addVertex(prev.getId());
-					copyTCVertex(prev,outVertex);
-				} else {
-					outVertex = parent.getVertex(prev.getId());
-				}
-				
-				parent.addEdge(random_id, outVertex, down, context);
-				
-				//Here's my space-saving thing again, need to put new Vertex in there
-				if (!exit_pts.containsKey(name)) {//Not initialized yet
-					System.out.println("Adding exit point");
-					ArrayList<Vertex> exits = new ArrayList<Vertex>();
-					exits.add(outVertex);
-					exit_pts.put(name, exits);
-				} else {
-					exit_pts.get(name).add(outVertex);//Don't want to print this stuff to the file quite yet
-				}
-			} else {	//Ultimately, will need to add edges in the middle
-				Vertex outVertex = parent.getVertex(prev.getId());
-				Vertex inVertex = parent.getVertex(next.getId());
-				if(outVertex == null) {
-					outVertex = parent.addVertex(prev.getId());
-					copyTCVertex(prev,outVertex);
-				} 
-				
-				if(inVertex == null) {
-					inVertex = parent.addVertex(next.getId());
-					copyTCVertex(next,inVertex);
-				}
-				
-				Edge toAdd = parent.addEdge(random_id, outVertex, inVertex, curr.getLabel());
-				if(curr.getDetails() != null) {
-					toAdd.setProperty("details", curr.getDetails());
-				}
-			}
-		}
-		parent.removeEdge(e);
-		return parent;
-	}
     
     private static String randomId(){
     	String validChars = "23456789ABCDEFGHJKLMNPQRSTWXYZabcdefghijkmnopqrstuvwxyz";
