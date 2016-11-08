@@ -164,7 +164,7 @@ public class GraphConverter {
 	            			im = S3_URL + im;
 	            		}
 	            		images.add(im);
-	            	}
+	             	}
 	                toAddV.setImages(images);
 	            } else if (v.getPropertyKeys().contains("images")) {
 	            	ArrayList<String> images = new ArrayList<String>();

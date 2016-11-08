@@ -4,10 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TCVertex {
-	//These are fields which are defined by the JSON files
+	//These are fields which are defined by the JSON files (for MongoDB)
 	private String _id;
 	private String name;
 	private String details;
+	private String graphId; //Optional field with a referenced id of another graph to include
 	private List<String> resources;
 	private List<String> images;
 	private List<ChartComment> comments;
@@ -93,6 +94,12 @@ public class TCVertex {
 	
 	public void setInEdges(List<String> e) {
 		this.inEdges = e;
+	}
+	public String getGraphId() {
+		return graphId;
+	}
+	public void setGraphId(String graphId) {
+		this.graphId = graphId;
 	}
 	
 	

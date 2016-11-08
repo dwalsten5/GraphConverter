@@ -18,32 +18,37 @@ public class TCVertexSerializer implements JsonSerializer<TCVertex> {
 		Gson myGson = new Gson();
 		final JsonObject jsonObject = new JsonObject();
 		jsonObject.addProperty("_id",vert.getId());
-		jsonObject.addProperty("name", vert.getName());
-		jsonObject.addProperty("details", vert.getDetails());
 		
-		final JsonArray resources = new JsonArray();
-		if (vert.getResources() != null) {
-			for (String r : vert.getResources()) {
-				resources.add(r);
+		if (vert.getGraphId() != null) { //Virtual Node
+			jsonObject.addProperty("graphId", vert.getGraphId());
+		} else {
+			jsonObject.addProperty("name", vert.getName());
+			jsonObject.addProperty("details", vert.getDetails());
+			
+			final JsonArray resources = new JsonArray();
+			if (vert.getResources() != null) {
+				for (String r : vert.getResources()) {
+					resources.add(r);
+				}
+				jsonObject.add("resources", resources);
 			}
-			jsonObject.add("resources", resources);
-		}
-		
-		final JsonArray images = new JsonArray();
-		if (vert.getImages() != null) {
-			for (String i : vert.getImages()) {
-				images.add(i);
+			
+			final JsonArray images = new JsonArray();
+			if (vert.getImages() != null) {
+				for (String i : vert.getImages()) {
+					images.add(i);
+				}
+				jsonObject.add("images", images);
 			}
-			jsonObject.add("images", images);
-		}
-		
-		
-		final JsonArray comments = new JsonArray();
-		if (vert.getComments() != null) {
-			for (ChartComment c : vert.getComments()) {
-				comments.add(myGson.toJson(c));
+			
+			
+			final JsonArray comments = new JsonArray();
+			if (vert.getComments() != null) {
+				for (ChartComment c : vert.getComments()) {
+					comments.add(myGson.toJson(c));
+				}
+				jsonObject.add("comments", comments);
 			}
-			jsonObject.add("comments", comments);
 		}
 		
 		
