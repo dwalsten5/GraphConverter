@@ -18,12 +18,11 @@ public class TCVertexSerializer implements JsonSerializer<TCVertex> {
 		Gson myGson = new Gson();
 		final JsonObject jsonObject = new JsonObject();
 		jsonObject.addProperty("_id",vert.getId());
-		
+		jsonObject.addProperty("name", vert.getName());
 		if (vert.getGraphId() != null) { //Virtual Node
 			jsonObject.addProperty("graphId", vert.getGraphId());
 			
 		} else {
-			jsonObject.addProperty("name", vert.getName());
 			jsonObject.addProperty("details", vert.getDetails());
 			final JsonArray resources = new JsonArray();
 			if (vert.getResources() != null) {

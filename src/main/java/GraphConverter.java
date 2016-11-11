@@ -40,7 +40,7 @@ public class GraphConverter {
     static String graph_file;
     static String JSON_DIRECTORY = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/";
     static String GRAPHML_DIRECTORY = "/Users/doranwalsten/Documents/CBID/TechConnect/yEd/Detailed_Maps/";
-    static ArrayList<String> LIBRARY = new ArrayList<String>(Arrays.asList("97B52EA53H39GDHFB","557E4HFF36CCD2H9C","AG48FFB9624DJE232","BC57D8B3259BD27FA")); //Store all existing graph Ids
+    static ArrayList<String> LIBRARY = new ArrayList<String>(Arrays.asList("E375BJ628B635B54J","3BC7AHDEJ32HE6687","JE4J3395986B3A8F7","J2BGD5GA6EG8GCF7E")); //Store all existing graph Ids
     //URL of the S3 repo, specifically the resources folder with all of the pictures and the like.
     static String S3_URL = "http://tech-connect-database.s3-website-us-west-2.amazonaws.com/resources/";
     
@@ -168,12 +168,14 @@ public class GraphConverter {
 	        	 if (v.getProperty("start") != null && ((Boolean) v.getProperty("start"))) {
 	                 firstNode = id;
 	             } 
-	        	 
+	        	 //Every Vertex needs an ID
+	        	 toAddV.setId(id);
 	        	//If resources present, add to object
 	        	if (v.getPropertyKeys().contains("resources")) { //Attachments to add, maybe even virtual graph
 	        		String name = v.getProperty("resources").toString().trim();
-	        		if (LIBRARY.contains(name)) { //This is a virtual graph
+	        		if (LIBRARY.contains(name)) { //This is a virtual graph, only set GraphID and name
 	        			toAddV.setGraphId(name);
+	        			toAddV.setName(v.getProperty("question") == null ? v.getProperty("name").toString().trim() : v.getProperty("question").toString().trim());
 	        			isVirtual = true;
 	        		} else {
 		            	ArrayList<String> resources = new ArrayList<String>();
@@ -192,7 +194,8 @@ public class GraphConverter {
 	        		}
 	            } 
 	        	  
-	        	toAddV.setId(id);
+	        	
+	        	
 	        	if (!isVirtual) {
 		        	System.out.println(v.getPropertyKeys());
 		        	toAddV.setName( v.getProperty("question") == null ? v.getProperty("name").toString().trim() : v.getProperty("question").toString().trim());
