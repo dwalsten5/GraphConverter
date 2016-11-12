@@ -15,6 +15,7 @@ import main.java.model.TCVertex;
 import main.java.model.FlowChart.ChartType;
 import main.java.model.TCEdge;
 
+import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -40,7 +41,9 @@ public class GraphConverter {
     static String graph_file;
     static String JSON_DIRECTORY = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/";
     static String GRAPHML_DIRECTORY = "/Users/doranwalsten/Documents/CBID/TechConnect/yEd/Detailed_Maps/";
-    static ArrayList<String> LIBRARY = new ArrayList<String>(Arrays.asList("E375BJ628B635B54J","3BC7AHDEJ32HE6687","JE4J3395986B3A8F7","J2BGD5GA6EG8GCF7E")); //Store all existing graph Ids
+    //Store all existing graph Ids
+    static Map<String,String> LIBRARY = new HashMap<String, String>();
+    static String LIBRARY_FILE = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/index_graph.csv";
     //URL of the S3 repo, specifically the resources folder with all of the pictures and the like.
     static String S3_URL = "http://tech-connect-database.s3-website-us-west-2.amazonaws.com/resources/";
     
@@ -56,7 +59,18 @@ public class GraphConverter {
     static Map<String,ArrayList<Vertex>> exit_pts = new HashMap<String,ArrayList<Vertex>>();//Exit points from referenced map
 
     public static void main(String[] args) throws IOException, FileNotFoundException {
-        
+    	
+    	//Want to read in the LIBRARY in order to have all referenced charts
+    	BufferedReader file_reader = new BufferedReader( new FileReader(LIBRARY_FILE));
+    	String graph_pair;
+    	while ((graph_pair = file_reader.readLine()) != null) {
+    		LIBRARY.put(graph_pair.split(",")[0],graph_pair.split(",")[1]);
+    		System.out.println(graph_pair);
+    	}
+    	file_reader.close();
+    	
+    	//Now iterate through the remaining files to setup the flowcharts
+    	
     	for (String g: args) {
     		entry_pts.clear();
     		exit_pts.clear();
@@ -90,7 +104,7 @@ public class GraphConverter {
 	        	if (up.getProperty("resources") != null) {
 	        		String name = up.getProperty("resources").toString().trim();
 	        		String context; 
-		        	if (LIBRARY.contains(name)) { 
+		        	if (LIBRARY.get(name) != null) { 
 		        		context = up.getProperty("details").toString().trim();
 		        		System.out.println(name);
 		        		if (entry_pts.containsKey(name)) { // We have already seen this dude before
@@ -173,7 +187,7 @@ public class GraphConverter {
 	        	//If resources present, add to object
 	        	if (v.getPropertyKeys().contains("resources")) { //Attachments to add, maybe even virtual graph
 	        		String name = v.getProperty("resources").toString().trim();
-	        		if (LIBRARY.contains(name)) { //This is a virtual graph, only set GraphID and name
+	        		if (LIBRARY.get(name) != null) { //This is a virtual graph, only set GraphID and name
 	        			toAddV.setGraphId(name);
 	        			toAddV.setName(v.getProperty("question") == null ? v.getProperty("name").toString().trim() : v.getProperty("question").toString().trim());
 	        			isVirtual = true;
