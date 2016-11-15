@@ -44,8 +44,12 @@ public class FlowChartSerializerMongo implements JsonSerializer<FlowChart> {
 				jsonObject.addProperty("type", "misc");
 		}
 		
-		//Add null image for now
-		jsonObject.add("image", JsonNull.INSTANCE);
+		//If flowchart has an image, add it
+		if (flowchart.getImage() != null ) {
+			jsonObject.addProperty("image", flowchart.getImage());
+		} else {
+			jsonObject.add("image", JsonNull.INSTANCE);
+		}
 		
 		//Upvotes and DownVotes. For now, will guarantee null because we're converting from
 		//fresh charts

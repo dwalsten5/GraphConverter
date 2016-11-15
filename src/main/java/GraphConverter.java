@@ -13,6 +13,7 @@ import main.java.model.FlowChart;
 import main.java.model.TCGraph;
 import main.java.model.TCVertex;
 import main.java.model.FlowChart.ChartType;
+import main.java.model.LibraryEntry;
 import main.java.model.TCEdge;
 
 import java.io.BufferedReader;
@@ -42,8 +43,9 @@ public class GraphConverter {
     static String JSON_DIRECTORY = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/";
     static String GRAPHML_DIRECTORY = "/Users/doranwalsten/Documents/CBID/TechConnect/yEd/Detailed_Maps/";
     //Store all existing graph Ids
-    static Map<String,String> LIBRARY = new HashMap<String, String>();
-    static String LIBRARY_FILE = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/index_graph.csv";
+    static Map<String,LibraryEntry> LIBRARY = new HashMap<String,LibraryEntry>();
+    static ArrayList<String> GRAPH_LIBRARY = new ArrayList<String>();
+    static String LIBRARY_FILE = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/index_graph.json";
     //URL of the S3 repo, specifically the resources folder with all of the pictures and the like.
     static String S3_URL = "http://tech-connect-database.s3-website-us-west-2.amazonaws.com/resources/";
     
@@ -63,10 +65,20 @@ public class GraphConverter {
     	//Want to read in the LIBRARY in order to have all referenced charts
     	BufferedReader file_reader = new BufferedReader( new FileReader(LIBRARY_FILE));
     	String graph_pair;
-    	while ((graph_pair = file_reader.readLine()) != null) {
-    		LIBRARY.put(graph_pair.split(",")[0],graph_pair.split(",")[1]);
-    		System.out.println(graph_pair);
+    	JsonObject json = gson.fromJson(file_reader,JsonObject.class);
+    	JsonArray lib_names = json.get("library").getAsJsonArray();
+    	for (JsonElement j : lib_names ) {
+    		String name = j.toString().replaceAll("\"", "");
+    		LibraryEntry e = gson.fromJson(json.get(name), LibraryEntry.class);
+    		System.out.println(e.getDescription());
+    		//Key of the map is the graphml file (For now), format
+    		//graphml, flowchart ID, graph ID, description, image
+    		LIBRARY.put(name,e);
+    		GRAPH_LIBRARY.add(e.getGraph_id()); //Add the referenced graph file 
+    		//System.out.println(graph_pair);
     	}
+    	System.out.println(GRAPH_LIBRARY);
+    	
     	file_reader.close();
     	
     	//Now iterate through the remaining files to setup the flowcharts
@@ -104,7 +116,7 @@ public class GraphConverter {
 	        	if (up.getProperty("resources") != null) {
 	        		String name = up.getProperty("resources").toString().trim();
 	        		String context; 
-		        	if (LIBRARY.get(name) != null) { 
+		        	if (GRAPH_LIBRARY.contains(name)) { 
 		        		context = up.getProperty("details").toString().trim();
 		        		System.out.println(name);
 		        		if (entry_pts.containsKey(name)) { // We have already seen this dude before
@@ -158,9 +170,19 @@ public class GraphConverter {
 	        }
 			
 			FlowChart test_flowchart = new FlowChart();
-	        test_flowchart.setId(randomId());
-	        test_flowchart.setName("");
-	        test_flowchart.setDescription("");
+			if (LIBRARY.containsKey(g)) {
+				test_flowchart.setId(LIBRARY.get(g).getFlowchart_id());
+				test_flowchart.setName(LIBRARY.get(g).getName());
+				test_flowchart.setDescription(LIBRARY.get(g).getDescription());
+				if (LIBRARY.get(g).getImage() != null) {
+					test_flowchart.setImage(LIBRARY.get(g).getImage());
+				}
+			} else {
+				test_flowchart.setId(randomId());
+				test_flowchart.setName("");
+				test_flowchart.setDescription("");
+			}
+	        
 	        String date = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date());
 	        test_flowchart.setCreatedDate(date);
 	        test_flowchart.setUpdatedDate(date);
@@ -187,7 +209,7 @@ public class GraphConverter {
 	        	//If resources present, add to object
 	        	if (v.getPropertyKeys().contains("resources")) { //Attachments to add, maybe even virtual graph
 	        		String name = v.getProperty("resources").toString().trim();
-	        		if (LIBRARY.get(name) != null) { //This is a virtual graph, only set GraphID and name
+	        		if (GRAPH_LIBRARY.contains(name)) { //This is a virtual graph, only set GraphID and name
 	        			toAddV.setGraphId(name);
 	        			toAddV.setName(v.getProperty("question") == null ? v.getProperty("name").toString().trim() : v.getProperty("question").toString().trim());
 	        			isVirtual = true;
@@ -274,8 +296,12 @@ public class GraphConverter {
 	        }
 	        
 	        TCGraph toAddG = new TCGraph(nodes,edgs);
-	        toAddG.setId(randomId());
-	        toAddG.setOwner("TechConnect");
+	        if (LIBRARY.containsKey(g)) {
+	        	toAddG.setId(LIBRARY.get(g).getGraph_id());
+	        } else {
+		        toAddG.setId(randomId());
+		        toAddG.setOwner("TechConnect");
+	        }
 	        toAddG.setFirstNode(firstNode);
 	        test_flowchart.setGraph(toAddG);
 	        
@@ -290,6 +316,7 @@ public class GraphConverter {
 	        }
 	        
     	}
+    	
     }
     
     private static String randomId(){
