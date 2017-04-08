@@ -41,10 +41,10 @@ import static java.nio.file.StandardCopyOption.*;
 public class GraphConverter {
     static String graph_file;
     static String JSON_DIRECTORY = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/";
-    static String GRAPHML_DIRECTORY = "/Users/doranwalsten/Documents/CBID/TechConnect/yEd/Detailed_Maps/";
+    static String GRAPHML_DIRECTORY = "/Users/doranwalsten/Documents/CBID/TechConnect/yEd/Edited_Maps/";
     //Store all existing graph Ids
     static Map<String,LibraryEntry> LIBRARY = new HashMap<String,LibraryEntry>();
-    static ArrayList<String> GRAPH_LIBRARY = new ArrayList<String>();
+    static ArrayList<String> FLOWCHART_LIBRARY = new ArrayList<String>();
     static String LIBRARY_FILE = "/Users/doranwalsten/Google_Drive/CBID/TechConnect/AppResources/json/index_graph.json";
     //URL of the S3 repo, specifically the resources folder with all of the pictures and the like.
     static String S3_URL = "http://tech-connect-database.s3-website-us-west-2.amazonaws.com/resources/";
@@ -74,10 +74,10 @@ public class GraphConverter {
     		//Key of the map is the graphml file (For now), format
     		//graphml, flowchart ID, graph ID, description, image
     		LIBRARY.put(name,e);
-    		GRAPH_LIBRARY.add(e.getGraph_id()); //Add the referenced graph file 
+    		FLOWCHART_LIBRARY.add(e.getFlowchart_id()); //Add the referenced graph file 
     		//System.out.println(graph_pair);
     	}
-    	System.out.println(GRAPH_LIBRARY);
+    	System.out.println(FLOWCHART_LIBRARY);
     	
     	file_reader.close();
     	
@@ -116,7 +116,7 @@ public class GraphConverter {
 	        	if (up.getProperty("resources") != null) {
 	        		String name = up.getProperty("resources").toString().trim();
 	        		String context; 
-		        	if (GRAPH_LIBRARY.contains(name)) { 
+		        	if (FLOWCHART_LIBRARY.contains(name)) { 
 		        		context = up.getProperty("details").toString().trim();
 		        		System.out.println(name);
 		        		if (entry_pts.containsKey(name)) { // We have already seen this dude before
@@ -209,7 +209,7 @@ public class GraphConverter {
 	        	//If resources present, add to object
 	        	if (v.getPropertyKeys().contains("resources")) { //Attachments to add, maybe even virtual graph
 	        		String name = v.getProperty("resources").toString().trim();
-	        		if (GRAPH_LIBRARY.contains(name)) { //This is a virtual graph, only set GraphID and name
+	        		if (FLOWCHART_LIBRARY.contains(name)) { //This is a virtual graph, only set GraphID and name
 	        			toAddV.setGraphId(name);
 	        			toAddV.setName(v.getProperty("question") == null ? v.getProperty("name").toString().trim() : v.getProperty("question").toString().trim());
 	        			isVirtual = true;

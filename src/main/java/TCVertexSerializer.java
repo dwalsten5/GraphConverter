@@ -20,7 +20,7 @@ public class TCVertexSerializer implements JsonSerializer<TCVertex> {
 		jsonObject.addProperty("_id",vert.getId());
 		jsonObject.addProperty("name", vert.getName());
 		if (vert.getGraphId() != null) { //Virtual Node
-			jsonObject.addProperty("graphId", vert.getGraphId());
+			jsonObject.addProperty("chartId", vert.getGraphId());
 			
 		} else {
 			jsonObject.addProperty("details", vert.getDetails());
